@@ -1,13 +1,16 @@
 "use client";
+
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
+
 type EventRow = {
   id: string;
   title: string;
   description: string;
   event_date: string;
   max_players: number;
-  created_by: string; // auth.users.id
+  created_by: string;
   registrations_open: boolean;
   registrations_open_at: string | null;
 };
@@ -15,14 +18,14 @@ type EventRow = {
 type ParticipantRow = {
   id: string;
   event_id: string;
-  user_id: string; // auth.users.id
+  user_id: string;
   role: string | null;
   status: string | null;
   created_at: string | null;
 };
 
 type PublicUser = {
-  auth_user_id: string; // auth.users.id
+  auth_user_id: string;
   discord_username: string | null;
   ubisoft_nickname: string | null;
   platform: string | null;
@@ -33,34 +36,56 @@ type TeamRow = {
   id: string;
   event_id: string;
   team_name: "A" | "B";
-  members: string[]; // JSONB array
+  members: string[];
   created_at: string | null;
 };
 
 export default function EventsPage() {
+  const router = useRouter();
+
   const [events, setEvents] = useState<EventRow[]>([]);
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
   const [userMap, setUserMap] = useState<Map<string, PublicUser>>(new Map());
-
-  // teams salvate nel DB: eventId -> { A, B }
-  const [savedTeams, setSavedTeams] = useState<
-    Record<string, { A?: string[]; B?: string[] }>
-  >({});
+  const [savedTeams, setSavedTeams] = useState<Record<string, { A?: string[]; B?: string[] }>>({});
 
   useEffect(() => {
     const init = async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      setMyUserId(userData?.user?.id ?? null);
+      const { data: authData } = await supabase.auth.getUser();
+      const authUser = authData?.user;
+
+      // 1) non loggato -> home
+      if (!authUser) {
+        router.replace("/");
+        return;
+      }
+
+      setMyUserId(authUser.id);
+
+      // 2) controllo profilo completato
+      const { data: profile, error: profileError } = await supabase
+        .from("users")
+        .select("ubisoft_nickname, platform")
+        .eq("auth_user_id", authUser.id)
+        .single();
+
+      if (
+        profileError ||
+        !profile?.ubisoft_nickname ||
+        !profile?.platform
+      ) {
+        alert("Completa prima il profilo per accedere agli eventi.");
+        router.replace("/profile");
+        return;
+      }
 
       await loadAll();
       setLoading(false);
     };
 
     init();
-  }, []);
+  }, [router]);
 
   const announceDiscord = async (content: string) => {
     const res = await fetch("/api/discord/announce", {
@@ -71,7 +96,6 @@ export default function EventsPage() {
 
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      console.error("Discord announce error:", data);
       alert("Errore invio Discord: " + (data?.details ?? data?.error ?? "unknown"));
       return false;
     }
@@ -79,65 +103,43 @@ export default function EventsPage() {
   };
 
   const loadAll = async () => {
-    // 1) eventi
-    const { data: ev, error: evErr } = await supabase
+    const { data: ev } = await supabase
       .from("events")
       .select("id,title,description,event_date,max_players,created_by,registrations_open,registrations_open_at")
       .order("event_date", { ascending: true });
 
-    if (evErr) {
-      console.error("events:", evErr.message);
-      return;
-    }
-    const evRows = (ev as EventRow[]) ?? [];
-    setEvents(evRows);
+    setEvents((ev as EventRow[]) ?? []);
 
-    // 2) partecipanti
-    const { data: part, error: partErr } = await supabase
+    const { data: part } = await supabase
       .from("event_participants")
       .select("*");
 
-    if (partErr) {
-      console.error("participants:", partErr.message);
-      return;
-    }
     const partRows = (part as ParticipantRow[]) ?? [];
     setParticipants(partRows);
 
-    // 3) profili (tabella users)
     const uniqueUserIds = Array.from(new Set(partRows.map((p) => p.user_id)));
     if (uniqueUserIds.length > 0) {
-      const { data: usersData, error: usersErr } = await supabase
+      const { data: usersData } = await supabase
         .from("users")
         .select("auth_user_id, discord_username, ubisoft_nickname, platform, rank")
         .in("auth_user_id", uniqueUserIds);
 
-      if (usersErr) {
-        console.error("users:", usersErr.message);
-      } else {
-        const map = new Map<string, PublicUser>();
-        (usersData ?? []).forEach((u: any) => map.set(u.auth_user_id, u));
-        setUserMap(map);
-      }
+      const map = new Map<string, PublicUser>();
+      (usersData ?? []).forEach((u: any) => map.set(u.auth_user_id, u));
+      setUserMap(map);
     } else {
       setUserMap(new Map());
     }
 
-    // 4) squadre salvate
-    const { data: tData, error: tErr } = await supabase.from("event_teams").select("*");
-    if (tErr) {
-      console.error("event_teams:", tErr.message);
-      setSavedTeams({});
-    } else {
-      const teams = (tData as TeamRow[]) ?? [];
-      const map: Record<string, { A?: string[]; B?: string[] }> = {};
-      for (const t of teams) {
-        if (!map[t.event_id]) map[t.event_id] = {};
-        if (t.team_name === "A") map[t.event_id].A = (t.members ?? []) as any;
-        if (t.team_name === "B") map[t.event_id].B = (t.members ?? []) as any;
-      }
-      setSavedTeams(map);
+    const { data: tData } = await supabase.from("event_teams").select("*");
+    const teams = (tData as TeamRow[]) ?? [];
+    const map: Record<string, { A?: string[]; B?: string[] }> = {};
+    for (const t of teams) {
+      if (!map[t.event_id]) map[t.event_id] = {};
+      if (t.team_name === "A") map[t.event_id].A = t.members ?? [];
+      if (t.team_name === "B") map[t.event_id].B = t.members ?? [];
     }
+    setSavedTeams(map);
   };
 
   const participantsByEvent = useMemo(() => {
@@ -164,11 +166,7 @@ export default function EventsPage() {
 
     const { data: userData } = await supabase.auth.getUser();
     const user = userData?.user;
-
-    if (!user) {
-      alert("Devi fare login per partecipare.");
-      return;
-    }
+    if (!user) return;
 
     const { error } = await supabase.from("event_participants").insert({
       event_id: event.id,
@@ -216,16 +214,8 @@ export default function EventsPage() {
   };
 
   const openRegistrations = async (event: EventRow) => {
-    if (!myUserId) {
-      alert("Devi essere loggato.");
-      return;
-    }
-    if (event.created_by !== myUserId) {
+    if (!myUserId || event.created_by !== myUserId) {
       alert("Solo chi ha creato l’evento può aprire le iscrizioni.");
-      return;
-    }
-    if (event.registrations_open) {
-      alert("Iscrizioni già aperte.");
       return;
     }
 
@@ -239,32 +229,18 @@ export default function EventsPage() {
       return;
     }
 
-    const dateStr = new Date(event.event_date).toLocaleString();
     const content =
       `🟢 **Iscrizioni aperte!**\n` +
       `🎮 **${event.title}**\n` +
-      `📅 ${dateStr}\n` +
+      `📅 ${new Date(event.event_date).toLocaleString()}\n` +
       `👥 Max: **${event.max_players}**\n` +
       `➡️ Iscriviti sul sito: ${window.location.origin}/events`;
 
     await announceDiscord(content);
-
-    alert("Iscrizioni aperte ✅ (annuncio inviato su Discord)");
     await loadAll();
   };
 
   const generateAndSaveTeams = async (event: EventRow) => {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData?.user) {
-      alert("Devi essere loggato per generare le squadre.");
-      return;
-    }
-
-    if (!event.registrations_open) {
-      alert("Apri prima le iscrizioni.");
-      return;
-    }
-
     const list = participantsByEvent.get(event.id) ?? [];
     if (list.length < 10) {
       alert("Servono almeno 10 partecipanti per creare 2 squadre da 5.");
@@ -272,8 +248,6 @@ export default function EventsPage() {
     }
 
     const labels = list.map(formatPlayerLabel);
-
-    // shuffle
     const shuffled = [...labels].sort(() => Math.random() - 0.5);
     const teamA = shuffled.slice(0, 5);
     const teamB = shuffled.slice(5, 10);
@@ -291,7 +265,6 @@ export default function EventsPage() {
       return;
     }
 
-    alert("Squadre salvate ✅");
     await loadAll();
   };
 
@@ -304,17 +277,14 @@ export default function EventsPage() {
       return;
     }
 
-    const dateStr = new Date(event.event_date).toLocaleString();
-
     const content =
       `🏆 **Squadre evento**\n` +
       `🎮 **${event.title}**\n` +
-      `📅 ${dateStr}\n\n` +
+      `📅 ${new Date(event.event_date).toLocaleString()}\n\n` +
       `🟦 **TEAM A**\n- ${teamA.join("\n- ")}\n\n` +
       `🟥 **TEAM B**\n- ${teamB.join("\n- ")}\n`;
 
-    const ok = await announceDiscord(content);
-    if (ok) alert("Squadre pubblicate su Discord ✅");
+    await announceDiscord(content);
   };
 
   if (loading) {
@@ -352,97 +322,36 @@ export default function EventsPage() {
               maxWidth: 980,
             }}
           >
-            <h2 style={{ marginBottom: 6 }}>{event.title}</h2>
-            <p style={{ marginTop: 0, opacity: 0.9 }}>{event.description}</p>
-
-            <p style={{ marginTop: 10 }}>📅 {new Date(event.event_date).toLocaleString()}</p>
-
+            <h2>{event.title}</h2>
+            <p>{event.description}</p>
+            <p>📅 {new Date(event.event_date).toLocaleString()}</p>
             <p>
-              🟢 Iscrizioni:{" "}
-              <b style={{ color: event.registrations_open ? "#2ecc71" : "#f1c40f" }}>
-                {event.registrations_open ? "APERTE" : "CHIUSE"}
-              </b>
-              {event.registrations_open_at ? (
-                <>
-                  {" "}
-                  (programmate: {new Date(event.registrations_open_at).toLocaleString()})
-                </>
-              ) : null}
+              🟢 Iscrizioni: <b>{event.registrations_open ? "APERTE" : "CHIUSE"}</b>
             </p>
-
             <p>
               👥 Iscritti: <b>{count}</b> / {event.max_players}
             </p>
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               {!joined ? (
-                <button
-                  onClick={() => joinEvent(event)}
-                  disabled={full || !event.registrations_open}
-                  style={{
-                    marginTop: 10,
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: "1px solid #444",
-                    cursor: full || !event.registrations_open ? "not-allowed" : "pointer",
-                    opacity: full || !event.registrations_open ? 0.6 : 1,
-                  }}
-                >
+                <button onClick={() => joinEvent(event)} disabled={full || !event.registrations_open}>
                   {!event.registrations_open ? "Iscrizioni chiuse" : full ? "Evento pieno" : "Partecipa"}
                 </button>
               ) : (
-                <button
-                  onClick={() => leaveEvent(event.id)}
-                  style={{
-                    marginTop: 10,
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: "1px solid #444",
-                    cursor: "pointer",
-                  }}
-                >
-                  Annulla partecipazione
-                </button>
+                <button onClick={() => leaveEvent(event.id)}>Annulla partecipazione</button>
               )}
 
               {isCreator && !event.registrations_open && (
-                <button
-                  onClick={() => openRegistrations(event)}
-                  style={{
-                    marginTop: 10,
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: "1px solid #444",
-                    cursor: "pointer",
-                  }}
-                >
+                <button onClick={() => openRegistrations(event)}>
                   Apri iscrizioni + annuncio Discord
                 </button>
               )}
 
-              <button
-                onClick={() => generateAndSaveTeams(event)}
-                style={{
-                  marginTop: 10,
-                  padding: "10px 14px",
-                  borderRadius: 10,
-                  border: "1px solid #444",
-                  cursor: "pointer",
-                }}
-              >
-                Genera squadre (salva)
+              <button onClick={() => generateAndSaveTeams(event)}>
+                Genera squadre
               </button>
 
-              <button
-                onClick={() => publishTeamsToDiscord(event)}
-                style={{
-                  marginTop: 10,
-                  padding: "10px 14px",
-                  borderRadius: 10,
-                  border: "1px solid #444",
-                  cursor: "pointer",
-                }}
-              >
+              <button onClick={() => publishTeamsToDiscord(event)}>
                 Pubblica squadre su Discord
               </button>
             </div>
@@ -465,39 +374,22 @@ export default function EventsPage() {
                   );
                 })}
               </ul>
-              <p style={{ opacity: 0.75 }}>
-                Se qualcuno appare come “utente / non impostato”, deve completare il profilo su{" "}
-                <b>/profile</b>.
-              </p>
             </details>
 
             {(teamA || teamB) && (
-              <div
-                style={{
-                  marginTop: 14,
-                  padding: 14,
-                  border: "1px solid #444",
-                  borderRadius: 10,
-                }}
-              >
-                <h3 style={{ marginTop: 0 }}>Squadre (salvate)</h3>
-
+              <div style={{ marginTop: 14, padding: 14, border: "1px solid #444", borderRadius: 10 }}>
+                <h3>Squadre</h3>
                 <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
                   <div>
                     <b>TEAM A</b>
                     <ol>
-                      {(teamA ?? []).map((n, i) => (
-                        <li key={i}>{n}</li>
-                      ))}
+                      {(teamA ?? []).map((n, i) => <li key={i}>{n}</li>)}
                     </ol>
                   </div>
-
                   <div>
                     <b>TEAM B</b>
                     <ol>
-                      {(teamB ?? []).map((n, i) => (
-                        <li key={i}>{n}</li>
-                      ))}
+                      {(teamB ?? []).map((n, i) => <li key={i}>{n}</li>)}
                     </ol>
                   </div>
                 </div>
