@@ -19,6 +19,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [authUser, setAuthUser] = useState<any>(null);
   const [dbUser, setDbUser] = useState<DbUser | null>(null);
+  const [logged, setLogged] = useState(false);
 
   const [ubisoftNickname, setUbisoftNickname] = useState("");
   const [platform, setPlatform] = useState("PC");
@@ -27,10 +28,14 @@ export default function ProfilePage() {
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase.auth.getUser();
+
       if (!data?.user) {
-        router.replace("/"); // Redirect if not logged in
+        setLogged(false);
+        setLoading(false);
         return;
       }
+
+      setLogged(true);
 
       const u = data.user;
       setAuthUser(u);
@@ -42,9 +47,11 @@ export default function ProfilePage() {
         u.user_metadata?.preferred_username ||
         "Utente";
 
-      const avatar = u.user_metadata?.avatar_url || u.user_metadata?.picture || null;
+      const avatar =
+        u.user_metadata?.avatar_url ||
+        u.user_metadata?.picture ||
+        null;
 
-      // Crea/aggiorna riga utente (upsert)
       const { error: upsertError } = await supabase
         .from("users")
         .upsert(
@@ -56,9 +63,10 @@ export default function ProfilePage() {
           { onConflict: "auth_user_id" }
         );
 
-      if (upsertError) console.error("upsert:", upsertError.message);
+      if (upsertError) {
+        console.error("upsert:", upsertError.message);
+      }
 
-      // Leggi riga dal DB
       const { data: row, error: readError } = await supabase
         .from("users")
         .select("*")
@@ -75,16 +83,23 @@ export default function ProfilePage() {
       }
 
       setLoading(false);
-
-      // Verifica se il profilo è completo, se no reindirizza
-      if (!row?.ubisoft_nickname || !row?.platform) {
-        alert("Completa il tuo profilo per accedere agli eventi.");
-        router.replace("/profile");
-      }
     };
 
     load();
-  }, [router]);
+  }, []);
+
+  const loginWithDiscord = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "discord",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      alert("Errore login Discord: " + error.message);
+    }
+  };
 
   const saveGamingInfo = async () => {
     if (!authUser) return;
@@ -98,7 +113,10 @@ export default function ProfilePage() {
       })
       .eq("auth_user_id", authUser.id);
 
-    if (error) return alert("Errore salvataggio: " + error.message);
+    if (error) {
+      alert("Errore salvataggio: " + error.message);
+      return;
+    }
 
     alert("Dati salvati ✅");
   };
@@ -116,6 +134,28 @@ export default function ProfilePage() {
     );
   }
 
+  if (!logged) {
+    return (
+      <main style={{ padding: 40, maxWidth: 520 }}>
+        <h1>Profilo</h1>
+        <p>Per accedere a profilo, eventi e tornei devi prima fare login con Discord.</p>
+
+        <button
+          onClick={loginWithDiscord}
+          style={{
+            marginTop: 14,
+            padding: "12px 16px",
+            borderRadius: 10,
+            border: "1px solid #444",
+            cursor: "pointer",
+          }}
+        >
+          Login con Discord
+        </button>
+      </main>
+    );
+  }
+
   return (
     <main style={{ padding: 40, maxWidth: 520 }}>
       <h1>Profilo</h1>
@@ -126,51 +166,91 @@ export default function ProfilePage() {
       <hr style={{ margin: "16px 0" }} />
 
       <h2>Dati Gaming</h2>
-      <label style={{ display: "block", marginTop: 12 }}>Nickname Ubisoft</label>
+
+      <label style={{ display: "block", marginTop: 12 }}>
+        Nickname Ubisoft
+      </label>
       <input
         value={ubisoftNickname}
         onChange={(e) => setUbisoftNickname(e.target.value)}
         placeholder="Es: Fmontis23"
-        style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #444" }}
+        style={{
+          width: "100%",
+          padding: 10,
+          borderRadius: 10,
+          border: "1px solid #444",
+        }}
       />
 
-      <label style={{ display: "block", marginTop: 12 }}>Piattaforma</label>
+      <label style={{ display: "block", marginTop: 12 }}>
+        Piattaforma
+      </label>
       <select
         value={platform}
         onChange={(e) => setPlatform(e.target.value)}
-        style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #444" }}
+        style={{
+          width: "100%",
+          padding: 10,
+          borderRadius: 10,
+          border: "1px solid #444",
+        }}
       >
         <option>PC</option>
         <option>PlayStation</option>
         <option>Xbox</option>
       </select>
 
-      <label style={{ display: "block", marginTop: 12 }}>Rank (opzionale)</label>
+      <label style={{ display: "block", marginTop: 12 }}>
+        Rank (opzionale)
+      </label>
       <input
         value={rank}
         onChange={(e) => setRank(e.target.value)}
         placeholder="Es: Emerald / Diamond / Champ..."
-        style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #444" }}
-      />
-
-      <button
-        onClick={saveGamingInfo}
         style={{
-          marginTop: 14,
-          padding: "12px 16px",
+          width: "100%",
+          padding: 10,
           borderRadius: 10,
           border: "1px solid #444",
-          cursor: "pointer",
         }}
-      >
-        Salva
-      </button>
+      />
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
+        <button
+          onClick={saveGamingInfo}
+          style={{
+            padding: "12px 16px",
+            borderRadius: 10,
+            border: "1px solid #444",
+            cursor: "pointer",
+          }}
+        >
+          Salva
+        </button>
+
+        <button
+          onClick={() => router.push("/events")}
+          style={{
+            padding: "12px 16px",
+            borderRadius: 10,
+            border: "1px solid #444",
+            cursor: "pointer",
+          }}
+        >
+          Vai agli eventi
+        </button>
+      </div>
 
       <hr style={{ margin: "16px 0" }} />
 
       <button
         onClick={logout}
-        style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid #444", cursor: "pointer" }}
+        style={{
+          padding: "10px 14px",
+          borderRadius: 10,
+          border: "1px solid #444",
+          cursor: "pointer",
+        }}
       >
         Logout
       </button>

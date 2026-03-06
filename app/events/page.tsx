@@ -52,25 +52,26 @@ export default function EventsPage() {
 
   useEffect(() => {
     const init = async () => {
-      const { data: authData } = await supabase.auth.getUser();
-      const authUser = authData?.user;
-
-      // 1) non loggato -> home
-      if (!authUser) {
-        router.replace("/");
+      const { data } = await supabase.auth.getUser();
+      if (!data?.user) {
+        router.replace("/profile"); // **Modifica qui il redirect verso Profilo se non loggato**
         return;
       }
 
-      setMyUserId(authUser.id);
+      setMyUserId(data.user.id);
 
       // 2) controllo profilo completato
       const { data: profile, error: profileError } = await supabase
         .from("users")
         .select("ubisoft_nickname, platform")
-        .eq("auth_user_id", authUser.id)
+        .eq("auth_user_id", data.user.id)
         .single();
 
-      if (profileError || !profile?.ubisoft_nickname || !profile?.platform) {
+      if (
+        profileError ||
+        !profile?.ubisoft_nickname ||
+        !profile?.platform
+      ) {
         alert("Completa prima il profilo per accedere agli eventi.");
         router.replace("/profile");
         return;
@@ -351,46 +352,6 @@ export default function EventsPage() {
                 Pubblica squadre su Discord
               </button>
             </div>
-
-            <details style={{ marginTop: 14 }}>
-              <summary>Vedi iscritti</summary>
-              <ul>
-                {list.map((p) => {
-                  const u = userMap.get(p.user_id);
-                  return (
-                    <li key={p.id}>
-                      <b>{u?.discord_username ?? "utente"}</b>
-                      {" — "}
-                      Ubisoft: {u?.ubisoft_nickname ?? "non impostato"}
-                      {" — "}
-                      {u?.platform ?? ""}
-                      {u?.rank ? ` (${u.rank})` : ""}
-                      {p.user_id === myUserId ? <b> (tu)</b> : null}
-                    </li>
-                  );
-                })}
-              </ul>
-            </details>
-
-            {(teamA || teamB) && (
-              <div style={{ marginTop: 14, padding: 14, border: "1px solid #444", borderRadius: 10 }}>
-                <h3>Squadre</h3>
-                <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-                  <div>
-                    <b>TEAM A</b>
-                    <ol>
-                      {(teamA ?? []).map((n, i) => <li key={i}>{n}</li>)}
-                    </ol>
-                  </div>
-                  <div>
-                    <b>TEAM B</b>
-                    <ol>
-                      {(teamB ?? []).map((n, i) => <li key={i}>{n}</li>)}
-                    </ol>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         );
       })}
