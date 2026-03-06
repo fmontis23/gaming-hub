@@ -15,7 +15,7 @@ export default function BackButton() {
         background: "rgba(255,255,255,0.05)",
         color: "white",
         cursor: "pointer",
-        marginBottom: 10
+        marginBottom: 10,
       }}
     >
       ← Indietro
