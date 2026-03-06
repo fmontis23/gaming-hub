@@ -1,7 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 export default function AdminDashboard() {
-  // Funzione per inviare il messaggio di test a Discord
+  const router = useRouter();
+
   const sendTestDiscordMessage = async () => {
     const res = await fetch("/api/discord/announce", {
       method: "POST",
@@ -28,6 +31,21 @@ export default function AdminDashboard() {
 
   return (
     <main style={{ padding: 24 }}>
+      <button
+        onClick={() => router.back()}
+        style={{
+          padding: "8px 14px",
+          borderRadius: 8,
+          border: "1px solid #444",
+          background: "rgba(255,255,255,0.05)",
+          color: "white",
+          cursor: "pointer",
+          marginBottom: 16,
+        }}
+      >
+        ← Indietro
+      </button>
+
       <h1 style={{ marginTop: 0 }}>🛠 Dashboard Moderatore</h1>
       <p style={{ opacity: 0.85 }}>
         Da qui gestisci eventi/tornei e offerte PC.
@@ -70,7 +88,6 @@ export default function AdminDashboard() {
         </a>
       </div>
 
-      {/* Bottone per il test Discord */}
       <div style={{ marginTop: 20 }}>
         <button
           onClick={sendTestDiscordMessage}
