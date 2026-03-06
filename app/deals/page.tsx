@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 
 type Deal = {
@@ -17,6 +18,8 @@ type Deal = {
 };
 
 export default function DealsPage() {
+  const router = useRouter();
+
   const [deals, setDeals] = useState<Deal[]>([]);
   const [store, setStore] = useState("all");
   const [type, setType] = useState("all");
@@ -24,6 +27,7 @@ export default function DealsPage() {
 
   const loadDeals = async () => {
     setLoading(true);
+
     const { data, error } = await supabase
       .from("deals")
       .select("id,title,store,deal_type,price_old,price_new,currency,url,ends_at,created_at")
@@ -35,6 +39,7 @@ export default function DealsPage() {
     } else {
       setDeals((data as Deal[]) ?? []);
     }
+
     setLoading(false);
   };
 
@@ -55,7 +60,22 @@ export default function DealsPage() {
   }, [deals, store, type]);
 
   return (
-    <main style={{ padding: 24 }}>
+    <main style={{ padding: 40 }}>
+      <button
+        onClick={() => router.back()}
+        style={{
+          padding: "8px 14px",
+          borderRadius: 8,
+          border: "1px solid #444",
+          background: "rgba(255,255,255,0.05)",
+          color: "white",
+          cursor: "pointer",
+          marginBottom: 16,
+        }}
+      >
+        ← Indietro
+      </button>
+
       <h1 style={{ marginTop: 0 }}>💸 Offerte & giochi gratis (PC)</h1>
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
@@ -82,7 +102,12 @@ export default function DealsPage() {
 
         <button
           onClick={loadDeals}
-          style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #444", cursor: "pointer" }}
+          style={{
+            padding: "8px 12px",
+            borderRadius: 10,
+            border: "1px solid #444",
+            cursor: "pointer",
+          }}
         >
           Aggiorna
         </button>
@@ -116,6 +141,7 @@ export default function DealsPage() {
               }}
             >
               <b>{d.title}</b>
+
               <div style={{ opacity: 0.85, marginTop: 6 }}>
                 {d.store} • {d.deal_type === "free" ? "Gratis" : "Sconto"}
               </div>
