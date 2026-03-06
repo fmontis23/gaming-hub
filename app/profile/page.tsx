@@ -27,7 +27,10 @@ export default function ProfilePage() {
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase.auth.getUser();
-      if (!data?.user) return router.replace("/");
+      if (!data?.user) {
+        router.replace("/"); // Redirect if not logged in
+        return;
+      }
 
       const u = data.user;
       setAuthUser(u);
@@ -72,6 +75,12 @@ export default function ProfilePage() {
       }
 
       setLoading(false);
+
+      // Verifica se il profilo è completo, se no reindirizza
+      if (!row?.ubisoft_nickname || !row?.platform) {
+        alert("Completa il tuo profilo per accedere agli eventi.");
+        router.replace("/profile");
+      }
     };
 
     load();
