@@ -1,6 +1,7 @@
 "use client";
 
 export default function AdminDashboard() {
+  // Funzione per inviare il messaggio di test a Discord
   const sendTestDiscordMessage = async () => {
     const res = await fetch("/api/discord/announce", {
       method: "POST",
@@ -8,7 +9,10 @@ export default function AdminDashboard() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        content: "✅ Test Discord da Gaming Hub", // Messaggio di test
+        title: "🚨 Evento di Test",
+        description:
+          "Le iscrizioni per il torneo **Rainbow Six Siege 5v5** sono aperte!\n\n📅 Oggi alle 21:00\n👥 10 posti disponibili\n\nIscriviti subito!",
+        url: "https://gaming-hub-lime.vercel.app/events",
       }),
     });
 
@@ -19,7 +23,7 @@ export default function AdminDashboard() {
       return;
     }
 
-    alert("Messaggio inviato su Discord ✅");
+    alert("Messaggio Discord inviato ✅");
   };
 
   return (

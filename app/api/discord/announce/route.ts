@@ -12,26 +12,32 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const content = body?.content;
 
-    if (!content || typeof content !== "string") {
-      return NextResponse.json(
-        { error: "Missing content" },
-        { status: 400 }
-      );
-    }
+    const title = body?.title ?? "🎮 Gaming Hub";
+    const description = body?.description ?? "";
+    const url = body?.url ?? "https://gaming-hub-lime.vercel.app/events";
 
-    // Aggiungi @everyone o @here per avvisare tutti
-    const message = `@everyone @here ${content}`;
+    const payload = {
+      content: "@everyone",
+      embeds: [
+        {
+          title: title,
+          description: description,
+          url: url,
+          color: 5763719,
+          footer: {
+            text: "Gaming Hub Community",
+          },
+        },
+      ],
+    };
 
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        content: message,
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
