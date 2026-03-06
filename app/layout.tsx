@@ -4,7 +4,7 @@ import Navbar from "./components/Navbar";
 
 export const metadata: Metadata = {
   title: "Gaming Hub",
-  description: "Offerte, free games e tornei della community",
+  description: "Offerte PC, tornei e community gaming",
 };
 
 export default function RootLayout({
@@ -15,11 +15,15 @@ export default function RootLayout({
   return (
     <html lang="it">
       <body>
+
         <div className="nav">
           <Navbar />
         </div>
 
-        <div className="container">{children}</div>
+        <div className="container">
+          {children}
+        </div>
+
       </body>
     </html>
   );
