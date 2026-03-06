@@ -1,6 +1,27 @@
 "use client";
 
 export default function AdminDashboard() {
+  const sendTestDiscordMessage = async () => {
+    const res = await fetch("/api/discord/announce", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        content: "✅ Test Discord da Gaming Hub", // Il messaggio che verrà inviato su Discord
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert("Errore Discord: " + (data?.details || data?.error || "unknown"));
+      return;
+    }
+
+    alert("Messaggio inviato su Discord ✅");
+  };
+
   return (
     <main style={{ padding: 24 }}>
       <h1 style={{ marginTop: 0 }}>🛠 Dashboard Moderatore</h1>
@@ -43,6 +64,21 @@ export default function AdminDashboard() {
             Visualizza offerte sul sito
           </div>
         </a>
+      </div>
+
+      {/* Aggiungi il bottone per il test Discord */}
+      <div style={{ marginTop: 20 }}>
+        <button
+          onClick={sendTestDiscordMessage}
+          style={{
+            padding: "12px 16px",
+            borderRadius: 10,
+            border: "1px solid #444",
+            cursor: "pointer",
+          }}
+        >
+          Invia test Discord
+        </button>
       </div>
     </main>
   );
