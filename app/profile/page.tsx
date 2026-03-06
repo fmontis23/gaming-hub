@@ -129,6 +129,21 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <main style={{ padding: 40 }}>
+        <button
+          onClick={() => router.back()}
+          style={{
+            padding: "8px 14px",
+            borderRadius: 8,
+            border: "1px solid #444",
+            background: "rgba(255,255,255,0.05)",
+            color: "white",
+            cursor: "pointer",
+            marginBottom: 16,
+          }}
+        >
+          ← Indietro
+        </button>
+
         <p>Caricamento profilo...</p>
       </main>
     );
@@ -137,6 +152,21 @@ export default function ProfilePage() {
   if (!logged) {
     return (
       <main style={{ padding: 40, maxWidth: 520 }}>
+        <button
+          onClick={() => router.back()}
+          style={{
+            padding: "8px 14px",
+            borderRadius: 8,
+            border: "1px solid #444",
+            background: "rgba(255,255,255,0.05)",
+            color: "white",
+            cursor: "pointer",
+            marginBottom: 16,
+          }}
+        >
+          ← Indietro
+        </button>
+
         <h1>Profilo</h1>
         <p>Per accedere a profilo, eventi e tornei devi prima fare login con Discord.</p>
 
@@ -158,6 +188,21 @@ export default function ProfilePage() {
 
   return (
     <main style={{ padding: 40, maxWidth: 520 }}>
+      <button
+        onClick={() => router.back()}
+        style={{
+          padding: "8px 14px",
+          borderRadius: 8,
+          border: "1px solid #444",
+          background: "rgba(255,255,255,0.05)",
+          color: "white",
+          cursor: "pointer",
+          marginBottom: 16,
+        }}
+      >
+        ← Indietro
+      </button>
+
       <h1>Profilo</h1>
       <p>
         Loggato come: <b>{dbUser?.discord_username ?? "utente"}</b>
