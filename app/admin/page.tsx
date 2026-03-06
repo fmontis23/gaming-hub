@@ -8,7 +8,7 @@ export default function AdminDashboard() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        content: "✅ Test Discord da Gaming Hub", // Il messaggio che verrà inviato su Discord
+        content: "✅ Test Discord da Gaming Hub", // Messaggio di test
       }),
     });
 
@@ -66,7 +66,7 @@ export default function AdminDashboard() {
         </a>
       </div>
 
-      {/* Aggiungi il bottone per il test Discord */}
+      {/* Bottone per il test Discord */}
       <div style={{ marginTop: 20 }}>
         <button
           onClick={sendTestDiscordMessage}

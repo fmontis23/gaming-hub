@@ -21,12 +21,17 @@ export async function POST(req: Request) {
       );
     }
 
+    // Aggiungi @everyone o @here per avvisare tutti
+    const message = `@everyone @here ${content}`;
+
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({
+        content: message,
+      }),
     });
 
     if (!response.ok) {
