@@ -70,11 +70,7 @@ export default function EventsPage() {
         .eq("auth_user_id", authUser.id)
         .single();
 
-      if (
-        profileError ||
-        !profile?.ubisoft_nickname ||
-        !profile?.platform
-      ) {
+      if (profileError || !profile?.ubisoft_nickname || !profile?.platform) {
         alert("Completa prima il profilo per accedere agli eventi.");
         router.replace("/profile");
         return;
