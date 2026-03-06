@@ -2,28 +2,17 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { supabase } from "../lib/supabaseClient"; // assicurati di avere questo import corretto
+import { supabase } from "../../lib/supabaseClient";
 
 export default function Navbar() {
+
   const [logged, setLogged] = useState(false);
-  const [profileComplete, setProfileComplete] = useState(false);
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
         setLogged(true);
-        // Verifica se il profilo è completo (modifica questa logica in base al tuo DB)
-        const { data, error } = await supabase
-          .from("users")
-          .select("profile_complete")
-          .eq("id", user.id)
-          .single();
-        if (data?.profile_complete) {
-          setProfileComplete(true);
-        } else {
-          setProfileComplete(false);
-        }
       } else {
         setLogged(false);
       }
@@ -34,6 +23,7 @@ export default function Navbar() {
 
   return (
     <div className="navbar">
+
       <div className="logo">
         🎮 Gaming Hub
       </div>
@@ -42,9 +32,7 @@ export default function Navbar() {
         <Link href="/">Home</Link>
         <Link href="/deals">Offerte</Link>
         <Link href="/events">Eventi</Link>
-        {logged && profileComplete ? (
-          <Link href="/admin">Tornei</Link>
-        ) : null}
+        <Link href="/admin">Tornei</Link>
       </div>
 
       <div className="right">
@@ -53,11 +41,12 @@ export default function Navbar() {
             Profilo
           </Link>
         ) : (
-          <Link className="login-btn" href="/auth/callback">
+          <Link className="login-btn" href="/profile">
             Login
           </Link>
         )}
       </div>
+
     </div>
   );
 }
