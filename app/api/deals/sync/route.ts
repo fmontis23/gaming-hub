@@ -179,3 +179,36 @@ export async function GET() {
     );
   }
 }
+import { NextResponse } from "next/server";
+
+const steamStoreID = 2; // Store ID per Steam
+const cheapSharkAPIUrl = "https://www.cheapshark.com/api/1.0/deals"; // CheapShark API URL
+
+// Funzione per ottenere i giochi gratuiti da Steam
+const fetchSteamDeals = async () => {
+  const response = await fetch(`${cheapSharkAPIUrl}?storeID=${steamStoreID}&upperPrice=0&pageSize=10`);
+  const data = await response.json();
+  return data;
+};
+
+export async function GET() {
+  const deals = await fetchSteamDeals();
+
+  const games = deals.map((deal: any) => ({
+    title: deal.title,
+    store: deal.storeID,
+    url: deal.dealID,
+    price: deal.price,
+    store_name: "Steam",
+    release_date: deal.releaseDate,
+  }));
+
+  // Salviamo i giochi nel nostro database Supabase
+  const { data, error } = await supabase.from("deals").upsert(games, { onConflict: ["title", "store"] });
+
+  if (error) {
+    return NextResponse.json({ error: "Errore durante il salvataggio dei giochi su Steam", details: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true, data });
+}
