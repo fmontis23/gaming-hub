@@ -1,22 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { events } from "../../data/events";
 
 export default function EventsPage() {
   const router = useRouter();
 
-  const events: {
-    id: number;
-    title: string;
-    game: string;
-    date: string;
-    slots: string;
-    status: string;
-  }[] = [];
-
   return (
     <main className="events-page" style={{ padding: 40 }}>
-      
       <button
         onClick={() => router.back()}
         style={{
@@ -95,7 +86,39 @@ export default function EventsPage() {
           </div>
         </section>
       ) : (
-        <div>Eventi disponibili</div>
+        <section className="events-grid" style={{ marginTop: 40 }}>
+          {events.map((event) => (
+            <div key={event.id} className="event-card">
+              <div className="event-card-top">
+                <span className="event-game">{event.game}</span>
+                <span
+                  className={
+                    event.status === "Aperto"
+                      ? "event-status open"
+                      : "event-status full"
+                  }
+                >
+                  {event.status}
+                </span>
+              </div>
+
+              <h2 className="event-title">{event.title}</h2>
+              <p className="event-date">{event.date}</p>
+              <p className="event-slots">Posti: {event.slots}</p>
+
+              <button
+                className={
+                  event.status === "Aperto"
+                    ? "event-button"
+                    : "event-button disabled"
+                }
+                disabled={event.status !== "Aperto"}
+              >
+                {event.status === "Aperto" ? "Partecipa" : "Evento pieno"}
+              </button>
+            </div>
+          ))}
+        </section>
       )}
     </main>
   );
