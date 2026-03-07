@@ -1,10 +1,46 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { events } from "../../data/events";
+import { supabase } from "../../lib/supabaseClient";
+
+type EventItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  event_date: string;
+  max_players: number;
+  registrations_open: boolean;
+  registrations_open_at: string | null;
+};
 
 export default function EventsPage() {
   const router = useRouter();
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadEvents = async () => {
+      const { data, error } = await supabase
+        .from("events")
+        .select(
+          "id, title, description, event_date, max_players, registrations_open, registrations_open_at"
+        )
+        .order("event_date", { ascending: true });
+
+      if (error) {
+        console.error("Errore caricamento eventi:", error.message);
+        setEvents([]);
+        setLoading(false);
+        return;
+      }
+
+      setEvents(data || []);
+      setLoading(false);
+    };
+
+    loadEvents();
+  }, []);
 
   return (
     <main style={{ padding: 40 }}>
@@ -29,24 +65,21 @@ export default function EventsPage() {
         <p style={{ color: "#b8b8d0", marginBottom: 20 }}>
           Partecipa agli eventi del server, entra nelle squadre e gioca con la community.
         </p>
-
-        <a
-          href="/create-event"
-          style={{
-            display: "inline-block",
-            background: "#5865f2",
-            color: "white",
-            padding: "12px 22px",
-            borderRadius: 10,
-            fontWeight: "700",
-            textDecoration: "none",
-          }}
-        >
-          + Crea Evento
-        </a>
       </section>
 
-      {events.length === 0 ? (
+      {loading ? (
+        <div
+          style={{
+            background: "#171726",
+            borderRadius: 18,
+            padding: 40,
+            textAlign: "center",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          <p>Caricamento eventi...</p>
+        </div>
+      ) : events.length === 0 ? (
         <div
           style={{
             background: "#171726",
@@ -105,46 +138,62 @@ export default function EventsPage() {
                   display: "flex",
                   justifyContent: "space-between",
                   marginBottom: 10,
+                  gap: 10,
                 }}
               >
                 <span style={{ color: "#9aa4ff", fontWeight: "bold" }}>
-                  {event.game}
+                  Evento
                 </span>
 
                 <span
                   style={{
-                    color: event.status === "Aperto" ? "#4ade80" : "#f87171",
+                    color: event.registrations_open ? "#4ade80" : "#facc15",
                     fontWeight: "bold",
                   }}
                 >
-                  {event.status}
+                  {event.registrations_open ? "Iscrizioni aperte" : "In attesa"}
                 </span>
               </div>
 
-              <h3>{event.title}</h3>
+              <h3 style={{ marginTop: 0 }}>{event.title}</h3>
 
-              <p style={{ color: "#b8b8d0" }}>{event.date}</p>
+              {event.description && (
+                <p style={{ color: "#b8b8d0", lineHeight: 1.5 }}>
+                  {event.description}
+                </p>
+              )}
 
-              <p style={{ color: "#b8b8d0" }}>Posti: {event.slots}</p>
+              <p style={{ color: "#b8b8d0", marginTop: 12 }}>
+                📅 {new Date(event.event_date).toLocaleString()}
+              </p>
+
+              <p style={{ color: "#b8b8d0" }}>
+                👥 Max giocatori: {event.max_players}
+              </p>
+
+              {event.registrations_open_at && (
+                <p style={{ color: "#b8b8d0" }}>
+                  🟡 Apertura iscrizioni:{" "}
+                  {new Date(event.registrations_open_at).toLocaleString()}
+                </p>
+              )}
 
               <button
-                disabled={event.status !== "Aperto"}
+                disabled={!event.registrations_open}
                 style={{
                   marginTop: 12,
                   width: "100%",
                   padding: "10px",
                   borderRadius: 10,
                   border: "none",
-                  background:
-                    event.status === "Aperto" ? "#5865f2" : "#333",
+                  background: event.registrations_open ? "#5865f2" : "#333",
                   color: "white",
-                  cursor:
-                    event.status === "Aperto" ? "pointer" : "not-allowed",
+                  cursor: event.registrations_open ? "pointer" : "not-allowed",
                 }}
               >
-                {event.status === "Aperto"
+                {event.registrations_open
                   ? "Partecipa"
-                  : "Evento pieno"}
+                  : "Iscrizioni non ancora aperte"}
               </button>
             </div>
           ))}
