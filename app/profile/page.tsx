@@ -1,34 +1,49 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function ProfilePage() {
+  const router = useRouter();
+
   const [discordName, setDiscordName] = useState("");
   const [ubisoftName, setUbisoftName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     loadProfile();
   }, []);
 
   const loadProfile = async () => {
-    const { data: auth } = await supabase.auth.getUser();
+    const { data: auth, error: authError } = await supabase.auth.getUser();
     const user = auth?.user;
 
-    if (!user) return;
+    if (authError || !user) {
+      setIsLoggedIn(false);
+      setLoading(false);
+      return;
+    }
 
-    const { data } = await supabase
+    setIsLoggedIn(true);
+
+    const { data, error } = await supabase
       .from("profiles")
       .select("discord_name, ubisoft_name")
       .eq("id", user.id)
       .single();
 
-    if (data) {
-      setDiscordName(data.discord_name || "");
-      setUbisoftName(data.ubisoft_name || "");
+    if (error) {
+      console.error("Errore caricamento profilo:", error.message);
+      setDiscordName("");
+      setUbisoftName("");
+      setLoading(false);
+      return;
     }
 
+    setDiscordName(data?.discord_name || "");
+    setUbisoftName(data?.ubisoft_name || "");
     setLoading(false);
   };
 
@@ -36,7 +51,10 @@ export default function ProfilePage() {
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
 
-    if (!user) return;
+    if (!user) {
+      alert("Devi essere loggato.");
+      return;
+    }
 
     const { error } = await supabase
       .from("profiles")
@@ -61,8 +79,49 @@ export default function ProfilePage() {
     );
   }
 
+  if (!isLoggedIn) {
+    return (
+      <main style={{ padding: 40, maxWidth: 500 }}>
+        <button
+          onClick={() => router.back()}
+          style={{
+            padding: "8px 14px",
+            borderRadius: 8,
+            border: "1px solid #444",
+            background: "rgba(255,255,255,0.05)",
+            color: "white",
+            cursor: "pointer",
+            marginBottom: 16,
+          }}
+        >
+          ← Indietro
+        </button>
+
+        <h1>Profilo</h1>
+        <p style={{ marginTop: 12, color: "#b8b8d0" }}>
+          Devi prima fare login con Discord per vedere e modificare il profilo.
+        </p>
+      </main>
+    );
+  }
+
   return (
     <main style={{ padding: 40, maxWidth: 500 }}>
+      <button
+        onClick={() => router.back()}
+        style={{
+          padding: "8px 14px",
+          borderRadius: 8,
+          border: "1px solid #444",
+          background: "rgba(255,255,255,0.05)",
+          color: "white",
+          cursor: "pointer",
+          marginBottom: 16,
+        }}
+      >
+        ← Indietro
+      </button>
+
       <h1>Profilo</h1>
 
       <label style={{ display: "block", marginTop: 20 }}>
