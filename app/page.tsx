@@ -1,4 +1,36 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+type Deal = {
+  title: string;
+  image: string;
+  url: string;
+};
+
 export default function Home() {
+  const [deals, setDeals] = useState<Deal[]>([]);
+
+  useEffect(() => {
+    const loadDeals = async () => {
+      try {
+        const res = await fetch("/api/deals/sync");
+
+        if (!res.ok) {
+          throw new Error("Errore nel caricamento deals");
+        }
+
+        const data = await res.json();
+        setDeals((data.deals || []).slice(0, 3));
+      } catch (error) {
+        console.error("Errore home deals:", error);
+        setDeals([]);
+      }
+    };
+
+    loadDeals();
+  }, []);
+
   return (
     <main>
       <section className="hero">
@@ -51,6 +83,44 @@ export default function Home() {
             <p>Entra nel server, resta aggiornato e gioca insieme alla community.</p>
           </a>
         </div>
+      </section>
+
+      <section className="home-deals-preview">
+        <div className="section-header">
+          <h2>🔥 Giochi Gratis Epic</h2>
+          <a href="/deals" className="section-link">
+            Vedi tutto
+          </a>
+        </div>
+
+        {deals.length === 0 ? (
+          <div className="empty-preview">
+            Nessun deal disponibile al momento.
+          </div>
+        ) : (
+          <div className="deals-preview-grid">
+            {deals.map((deal, index) => (
+              <a
+                key={index}
+                href={deal.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="deal-preview-card"
+              >
+                <img
+                  src={deal.image}
+                  alt={deal.title}
+                  className="deal-preview-image"
+                />
+
+                <div className="deal-preview-content">
+                  <h3>{deal.title}</h3>
+                  <span className="deal-free-badge">FREE</span>
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
       </section>
     </main>
   );
