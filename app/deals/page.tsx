@@ -2,50 +2,57 @@
 
 import { useEffect, useState } from "react";
 
-type Deal = {
-  title: string;
-  storeID: string;
-  price: string;
-  oldPrice: string;
-  savings: string;
-  url: string;
-  image: string;
-  dealEnds: string;
-};
-
 export default function DealsPage() {
-  const [deals, setDeals] = useState<Deal[]>([]);
+  const [deals, setDeals] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchDeals = async () => {
+    const loadDeals = async () => {
       const res = await fetch("/api/deals/sync");
       const data = await res.json();
-      setDeals(data.deals);
+      setDeals(data.deals || []);
     };
-    fetchDeals();
-  }, []);
 
-  if (deals.length === 0) {
-    return <div>Caricamento offerte...</div>;
-  }
+    loadDeals();
+  }, []);
 
   return (
     <main style={{ padding: 40 }}>
-      <h1>🎮 Offerte e giochi gratis</h1>
+      <h1>🎮 Giochi Gratis Epic Games</h1>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 20 }}>
-        {deals.map((deal, index) => (
-          <div key={index} style={{ border: "1px solid #444", borderRadius: 10, padding: 20 }}>
-            <img src={deal.image} alt={deal.title} style={{ width: "100%", height: "auto", borderRadius: 10 }} />
-            <h3>{deal.title}</h3>
-            <p><strong>Prezzo:</strong> {deal.price}</p>
-            <p><strong>Prezzo precedente:</strong> {deal.oldPrice}</p>
-            <p><strong>Risparmi:</strong> {deal.savings}</p>
-            <a href={deal.url} target="_blank" style={{ color: "#1e90ff", textDecoration: "none" }}>
-              Vai allo store
-            </a>
-            <p><em>Scade il: {new Date(deal.dealEnds).toLocaleString()}</em></p>
-          </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))",
+          gap: 20,
+          marginTop: 20,
+        }}
+      >
+        {deals.map((deal, i) => (
+          <a
+            key={i}
+            href={deal.url}
+            target="_blank"
+            style={{
+              border: "1px solid #444",
+              borderRadius: 10,
+              padding: 10,
+              textDecoration: "none",
+              color: "white",
+              background: "#111",
+            }}
+          >
+            <img
+              src={deal.image}
+              style={{
+                width: "100%",
+                borderRadius: 8,
+              }}
+            />
+
+            <h3 style={{ marginTop: 10 }}>{deal.title}</h3>
+
+            <p style={{ color: "#00ff9c" }}>FREE</p>
+          </a>
         ))}
       </div>
     </main>
