@@ -41,6 +41,10 @@ type ProfileItem = {
   ubisoft_name: string | null;
 };
 
+type CountdownMap = {
+  [eventId: string]: string;
+};
+
 export default function EventsPage() {
   const router = useRouter();
 
@@ -57,10 +61,25 @@ export default function EventsPage() {
   const [teams, setTeams] = useState<TeamItem[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMemberItem[]>([]);
   const [profiles, setProfiles] = useState<ProfileItem[]>([]);
+  const [countdowns, setCountdowns] = useState<CountdownMap>({});
 
   useEffect(() => {
     loadAll();
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const nextCountdowns: CountdownMap = {};
+
+      for (const event of events) {
+        nextCountdowns[event.id] = getCountdownLabel(event.event_date);
+      }
+
+      setCountdowns(nextCountdowns);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [events]);
 
   const loadAll = async () => {
     setLoading(true);
@@ -349,6 +368,34 @@ export default function EventsPage() {
     });
   };
 
+  const getCountdownLabel = (eventDate: string) => {
+    const now = new Date().getTime();
+    const start = new Date(eventDate).getTime();
+    const eventDurationMs = 4 * 60 * 60 * 1000;
+    const end = start + eventDurationMs;
+
+    if (now < start) {
+      const diff = start - now;
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / (1000 * 60)) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+
+      if (days > 0) {
+        return `Inizia tra ${days}g ${hours}h ${minutes}m ${seconds}s`;
+      }
+
+      return `Inizia tra ${hours}h ${minutes}m ${seconds}s`;
+    }
+
+    if (now >= start && now <= end) {
+      return "Evento iniziato";
+    }
+
+    return "Evento terminato";
+  };
+
   return (
     <main
       style={{
@@ -381,7 +428,8 @@ export default function EventsPage() {
           padding: 24,
           borderRadius: 22,
           border: "1px solid rgba(255,255,255,0.08)",
-          background: "linear-gradient(135deg, rgba(88,101,242,0.16), rgba(124,58,237,0.10))",
+          background:
+            "linear-gradient(135deg, rgba(88,101,242,0.16), rgba(124,58,237,0.10))",
           boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
         }}
       >
@@ -474,6 +522,7 @@ export default function EventsPage() {
             const hasTeams = eventTeams.length > 0;
             const canGenerate = isAdmin && !hasTeams;
             const canReset = isAdmin && hasTeams;
+            const countdownLabel = countdowns[event.id] || getCountdownLabel(event.event_date);
 
             return (
               <div
@@ -562,6 +611,10 @@ export default function EventsPage() {
 
                   <p style={{ color: "#d4d4f7", margin: 0 }}>
                     👥 <strong>Iscritti:</strong> {currentCount}/{event.max_players}
+                  </p>
+
+                  <p style={{ color: "#d4d4f7", margin: 0 }}>
+                    ⏳ <strong>Stato:</strong> {countdownLabel}
                   </p>
 
                   {event.registrations_open_at && (
