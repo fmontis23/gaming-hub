@@ -15,19 +15,29 @@ export async function POST(req: Request) {
 
     const title = body?.title ?? "🎮 Gaming Hub";
     const description = body?.description ?? "";
-    const url = body?.url ?? "https://gaming-hub-lime.vercel.app/events";
+    const url = body?.url ?? "";
+    const mention = body?.mention ?? "@everyone";
+
+    const allowedMentions =
+      mention === "@everyone"
+        ? { parse: ["everyone"] }
+        : mention === "@here"
+        ? { parse: ["everyone"] }
+        : { parse: [] };
 
     const payload = {
-      content: "@everyone",
+      content: mention || "",
+      allowed_mentions: allowedMentions,
       embeds: [
         {
-          title: title,
-          description: description,
-          url: url,
-          color: 5763719,
+          title,
+          description,
+          url,
+          color: 8388736,
           footer: {
             text: "Gaming Hub Community",
           },
+          timestamp: new Date().toISOString(),
         },
       ],
     };

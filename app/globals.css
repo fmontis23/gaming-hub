@@ -2,6 +2,10 @@
   --bg: #070a12;
   --bg2: #0a1020;
   --text: rgba(255, 255, 255, 0.94);
+  --panel: rgba(255, 255, 255, 0.05);
+  --panel-border: rgba(255, 255, 255, 0.10);
+  --hover: rgba(255, 255, 255, 0.12);
+  --accent: #8b5cf6;
 }
 
 * {
@@ -30,52 +34,52 @@ a {
   text-decoration: none;
 }
 
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--hover);
+}
+
+input,
+select,
+textarea {
+  background: rgba(255, 255, 255, 0.04);
+  color: white;
+  border: 1px solid var(--panel-border);
+}
+
+option {
+  color: black;
+}
+
 .container {
   width: min(1180px, calc(100% - 32px));
   margin: 40px auto;
 }
 
-.navbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 30px;
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: blur(10px);
+  background: rgba(7, 10, 18, 0.70);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.logo {
-  font-size: 28px;
-  font-weight: bold;
-}
-
-.menu {
-  display: flex;
-  gap: 28px;
-}
-
-.menu a {
-  font-size: 16px;
-  opacity: 0.85;
-  transition: 0.2s;
-}
-
-.menu a:hover {
-  opacity: 1;
-}
-
-.right {
-  display: flex;
-  align-items: center;
-}
-
-.login-btn {
-  padding: 8px 14px;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.1);
-}
-
-.login-btn:hover {
-  background: rgba(255,255,255,0.2);
-}
 .site-header {
   position: sticky;
   top: 0;
@@ -177,6 +181,59 @@ a {
   background: rgba(255, 255, 255, 0.12);
 }
 
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 30px;
+}
+
+.logo {
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.menu {
+  display: flex;
+  gap: 28px;
+}
+
+.menu a {
+  font-size: 16px;
+  opacity: 0.85;
+  transition: 0.2s;
+}
+
+.menu a:hover {
+  opacity: 1;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+}
+
+.login-btn {
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.login-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.card:hover {
+  background: var(--hover);
+}
+
 @media (max-width: 900px) {
   .site-header-inner {
     grid-template-columns: 1fr;
@@ -191,5 +248,17 @@ a {
   .site-nav {
     flex-wrap: wrap;
     gap: 18px;
+  }
+
+  .menu {
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .navbar {
+    padding: 14px 18px;
+    flex-direction: column;
+    gap: 14px;
   }
 }
