@@ -1,27 +1,32 @@
 import { NextResponse } from "next/server";
-import { fetchEpicDeals } from "../epic";
-import { fetchSteamDeals } from "../steam";
+import { fetchEpicDeals } from "../../epic";
+import { fetchSteamDeals } from "../../steam";
 import { supabase } from "../../../lib/supabaseClient";
 
-// Funzione per recuperare le offerte di Epic e Steam
 export async function GET() {
   try {
     // Recupero le offerte da Epic e Steam
     const epicDeals = await fetchEpicDeals();
     const steamDeals = await fetchSteamDeals();
 
-    // Combino le offerte di Epic e Steam
     const allDeals = [...epicDeals, ...steamDeals];
 
-    // Ordino le offerte per data di scadenza (puoi modificare questo ordinamento)
-    const sortedDeals = allDeals.sort((a, b) => {
-      return new Date(a.dealEnds).getTime() - new Date(b.dealEnds).getTime();
+    // Ordino le offerte per data di scadenza
+    const sortedDeals = allDeals.sort((a, b) => new Date(a.dealEnds) - new Date(b.dealEnds));
+
+    // Salvo tutte le offerte su Supabase
+    const { error } = await supabase.from("deals").upsert(sortedDeals, {
+      onConflict: ["id"], // evita duplicati
     });
 
-    // Ritorno i risultati come risposta JSON
+    if (error) {
+      console.error("Errore nel salvataggio delle offerte", error);
+      return NextResponse.json({ error: "Errore nel salvataggio delle offerte" }, { status: 500 });
+    }
+
     return NextResponse.json({ deals: sortedDeals });
   } catch (error) {
-    console.error("Errore nel recupero delle offerte: ", error);
+    console.error("Errore nel recupero delle offerte:", error);
     return NextResponse.json({ error: "Errore nel recupero delle offerte" }, { status: 500 });
   }
 }

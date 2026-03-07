@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-// Definiamo il tipo di ogni offerta
 type Deal = {
   title: string;
   storeID: string;
@@ -10,7 +9,7 @@ type Deal = {
   oldPrice: string;
   savings: string;
   url: string;
-  image: string; // Immagine del deal
+  image: string;
   dealEnds: string;
 };
 
@@ -18,7 +17,6 @@ export default function DealsPage() {
   const [deals, setDeals] = useState<Deal[]>([]);
 
   useEffect(() => {
-    // Recupera le offerte dal server
     const fetchDeals = async () => {
       const res = await fetch("/api/deals/sync");
       const data = await res.json();
