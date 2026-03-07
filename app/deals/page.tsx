@@ -1,36 +1,55 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabaseClient";
+
+// Definiamo il tipo di ogni offerta
+type Deal = {
+  title: string;
+  storeID: string;
+  price: string;
+  oldPrice: string;
+  savings: string;
+  url: string;
+  image: string; // Immagine del deal
+  dealEnds: string;
+};
 
 export default function DealsPage() {
-  const [deals, setDeals] = useState<any[]>([]);
+  const [deals, setDeals] = useState<Deal[]>([]);
 
   useEffect(() => {
+    // Recupera le offerte dal server
     const fetchDeals = async () => {
-      const { data: dealsData } = await supabase.from("deals").select("*");
-      setDeals(dealsData ?? []);
+      const res = await fetch("/api/deals/sync");
+      const data = await res.json();
+      setDeals(data.deals);
     };
     fetchDeals();
   }, []);
+
+  if (deals.length === 0) {
+    return <div>Caricamento offerte...</div>;
+  }
 
   return (
     <main style={{ padding: 40 }}>
       <h1>🎮 Offerte e giochi gratis</h1>
 
-      {deals.length === 0 && <p>Nessuna offerta disponibile.</p>}
-
-      {deals.map((deal) => (
-        <div key={deal.deal_id} style={{ padding: 10, border: "1px solid #444", borderRadius: 10, marginTop: 20 }}>
-          <h2>{deal.title}</h2>
-          <p>💰 Prezzo: {deal.price_new}€</p>
-          <p>
-            <a href={deal.url} target="_blank" style={{ color: "#0070f3" }}>
-              Vai all'offerta
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 20 }}>
+        {deals.map((deal, index) => (
+          <div key={index} style={{ border: "1px solid #444", borderRadius: 10, padding: 20 }}>
+            <img src={deal.image} alt={deal.title} style={{ width: "100%", height: "auto", borderRadius: 10 }} />
+            <h3>{deal.title}</h3>
+            <p><strong>Prezzo:</strong> {deal.price}</p>
+            <p><strong>Prezzo precedente:</strong> {deal.oldPrice}</p>
+            <p><strong>Risparmi:</strong> {deal.savings}</p>
+            <a href={deal.url} target="_blank" style={{ color: "#1e90ff", textDecoration: "none" }}>
+              Vai allo store
             </a>
-          </p>
-        </div>
-      ))}
+            <p><em>Scade il: {new Date(deal.dealEnds).toLocaleString()}</em></p>
+          </div>
+        ))}
+      </div>
     </main>
   );
 }
