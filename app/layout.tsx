@@ -1,7 +1,6 @@
 "use client";
 
 import "./globals.css";
-import type { Metadata } from "next";
 import Navbar from "./components/Navbar";
 import { useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
@@ -19,16 +18,18 @@ export default function RootLayout({
       if (!user) return;
 
       const email = user.email ?? "";
-      const displayName =
+
+      const discordName =
+        user.user_metadata?.user_name ||
         user.user_metadata?.full_name ||
         user.user_metadata?.name ||
-        user.user_metadata?.user_name ||
         email;
 
       await supabase.from("profiles").upsert({
         id: user.id,
         email,
-        display_name: displayName,
+        display_name: discordName,
+        discord_name: discordName,
       });
     };
 
