@@ -620,3 +620,21 @@ option {
   display: flex;
   justify-content: center;
 }
+.events-create {
+  margin-top: 20px;
+}
+
+.create-event-button {
+  display: inline-block;
+  background: #5865f2;
+  color: white;
+  padding: 12px 22px;
+  border-radius: 10px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: 0.2s;
+}
+
+.create-event-button:hover {
+  transform: translateY(-2px);
+}
