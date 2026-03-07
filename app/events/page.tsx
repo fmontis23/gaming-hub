@@ -265,23 +265,35 @@ export default function EventsPage() {
       return;
     }
 
-    setLeavingId(eventId);
+    try {
+      setLeavingId(eventId);
 
-    const { error } = await supabase
-      .from("event_registrations")
-      .delete()
-      .eq("event_id", eventId)
-      .eq("user_id", userId);
+      const { data, error } = await supabase
+        .from("event_registrations")
+        .delete()
+        .eq("event_id", eventId)
+        .eq("user_id", userId)
+        .select();
 
-    setLeavingId(null);
+      if (error) {
+        console.error("Errore disiscrizione:", error);
+        alert("Errore disiscrizione: " + error.message);
+        return;
+      }
 
-    if (error) {
-      alert("Errore disiscrizione: " + error.message);
-      return;
+      if (!data || data.length === 0) {
+        alert("Nessuna iscrizione trovata da rimuovere.");
+        return;
+      }
+
+      alert("Disiscrizione completata ✅");
+      await loadAll();
+    } catch (error) {
+      console.error("Errore durante la disiscrizione:", error);
+      alert("Errore durante la disiscrizione.");
+    } finally {
+      setLeavingId(null);
     }
-
-    alert("Disiscrizione completata");
-    loadAll();
   };
 
   const generateTeams = async (eventId: string) => {
@@ -522,7 +534,8 @@ export default function EventsPage() {
             const hasTeams = eventTeams.length > 0;
             const canGenerate = isAdmin && !hasTeams;
             const canReset = isAdmin && hasTeams;
-            const countdownLabel = countdowns[event.id] || getCountdownLabel(event.event_date);
+            const countdownLabel =
+              countdowns[event.id] || getCountdownLabel(event.event_date);
 
             return (
               <div
@@ -619,7 +632,8 @@ export default function EventsPage() {
 
                   {event.registrations_open_at && (
                     <p style={{ color: "#d4d4f7", margin: 0 }}>
-                      🟡 <strong>Apertura:</strong> {formatDate(event.registrations_open_at)}
+                      🟡 <strong>Apertura:</strong>{" "}
+                      {formatDate(event.registrations_open_at)}
                     </p>
                   )}
                 </div>
