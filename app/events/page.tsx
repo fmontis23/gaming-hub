@@ -1,30 +1,12 @@
 export default function EventsPage() {
-  const events = [
-    {
-      id: 1,
-      title: "Rainbow Six Squad Night",
-      game: "Rainbow Six Siege",
-      date: "15 Marzo 2026 - 21:30",
-      slots: "8/10",
-      status: "Aperto",
-    },
-    {
-      id: 2,
-      title: "Valorant Team Battle",
-      game: "Valorant",
-      date: "18 Marzo 2026 - 22:00",
-      slots: "10/10",
-      status: "Pieno",
-    },
-    {
-      id: 3,
-      title: "Fortnite Community Event",
-      game: "Fortnite",
-      date: "22 Marzo 2026 - 18:00",
-      slots: "5/10",
-      status: "Aperto",
-    },
-  ];
+  const events: {
+    id: number;
+    title: string;
+    game: string;
+    date: string;
+    slots: string;
+    status: string;
+  }[] = [];
 
   return (
     <main className="events-page">
@@ -35,40 +17,62 @@ export default function EventsPage() {
         </p>
       </section>
 
-      <section className="events-grid">
-        {events.map((event) => (
-          <div key={event.id} className="event-card">
-            <div className="event-card-top">
-              <span className="event-game">{event.game}</span>
-              <span
+      {events.length === 0 ? (
+        <section className="events-empty">
+          <div className="events-empty-box">
+            <h2>Nessun evento disponibile</h2>
+            <p>
+              Al momento non ci sono eventi pubblicati. Torna presto oppure entra
+              nel Discord per restare aggiornato.
+            </p>
+
+            <div className="events-empty-actions">
+              <a
+                href="https://discord.gg/4NrqDfgP"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hero-discord"
+              >
+                Entra nel Discord
+              </a>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="events-grid">
+          {events.map((event) => (
+            <div key={event.id} className="event-card">
+              <div className="event-card-top">
+                <span className="event-game">{event.game}</span>
+                <span
+                  className={
+                    event.status === "Aperto"
+                      ? "event-status open"
+                      : "event-status full"
+                  }
+                >
+                  {event.status}
+                </span>
+              </div>
+
+              <h2 className="event-title">{event.title}</h2>
+              <p className="event-date">{event.date}</p>
+              <p className="event-slots">Posti: {event.slots}</p>
+
+              <button
                 className={
                   event.status === "Aperto"
-                    ? "event-status open"
-                    : "event-status full"
+                    ? "event-button"
+                    : "event-button disabled"
                 }
+                disabled={event.status !== "Aperto"}
               >
-                {event.status}
-              </span>
+                {event.status === "Aperto" ? "Partecipa" : "Evento pieno"}
+              </button>
             </div>
-
-            <h2 className="event-title">{event.title}</h2>
-
-            <p className="event-date">{event.date}</p>
-            <p className="event-slots">Posti: {event.slots}</p>
-
-            <button
-              className={
-                event.status === "Aperto"
-                  ? "event-button"
-                  : "event-button disabled"
-              }
-              disabled={event.status !== "Aperto"}
-            >
-              {event.status === "Aperto" ? "Partecipa" : "Evento pieno"}
-            </button>
-          </div>
-        ))}
-      </section>
+          ))}
+        </section>
+      )}
     </main>
   );
 }

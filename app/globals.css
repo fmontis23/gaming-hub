@@ -591,3 +591,32 @@ option {
     font-size: 32px;
   }
 }
+.events-empty {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.events-empty-box {
+  background: #171726;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 40px 24px;
+  text-align: center;
+  color: white;
+}
+
+.events-empty-box h2 {
+  font-size: 1.8rem;
+  margin-bottom: 12px;
+}
+
+.events-empty-box p {
+  color: #b8b8d0;
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
+
+.events-empty-actions {
+  display: flex;
+  justify-content: center;
+}
