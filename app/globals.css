@@ -223,7 +223,6 @@ option {
   margin-top: 6px;
   color: rgba(255,255,255,0.74);
 }
-
 .navbar {
   display: flex;
   align-items: center;
@@ -304,4 +303,37 @@ option {
     flex-direction: column;
     gap: 14px;
   }
+}
+.site-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.discord-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: #5865f2;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 700;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.discord-button:hover {
+  transform: translateY(-1px);
+  opacity: 0.92;
+}
+
+.profile-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 700;
 }
