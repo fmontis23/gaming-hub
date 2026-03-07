@@ -1,35 +1,19 @@
 import { NextResponse } from "next/server";
-import { fetchEpicDeals } from "./epic";  // 
-import { fetchSteamDeals } from "./steam"; // 
-import { supabase } from "@/lib/supabaseClient";
+import { fetchEpicDeals } from "../epic";  
+import { fetchSteamDeals } from "../steam";  
 
-export const GET = async () => {
+export async function GET() {
   try {
-    // Recupera i deals da Epic e Steam
+    // Fetch dati dai vari store (Epic e Steam)
     const epicDeals = await fetchEpicDeals();
     const steamDeals = await fetchSteamDeals();
 
-    // Combina i deals da Epic e Steam
-    const deals = [...epicDeals, ...steamDeals];
+    // Combina i dati e ritorna una risposta
+    const allDeals = [...epicDeals, ...steamDeals];
 
-    // Aggiungi i deals a Supabase
-    const { error } = await supabase
-      .from("deals")
-      .upsert(deals, { onConflict: "id" });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return new NextResponse(
-      JSON.stringify({ success: true }),
-      { status: 200 }
-    );
+    return NextResponse.json(allDeals);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    return new NextResponse(
-      JSON.stringify({ success: false, error: errorMessage }),
-      { status: 500 }
-    );
+    console.error("Errore nell'API: ", error);
+    return NextResponse.json({ error: "Errore nel recupero delle offerte" }, { status: 500 });
   }
-};
+}
