@@ -1,47 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchEpicDeals } from "../api/deals/sync/epic";
-import { fetchSteamDeals } from "../api/deals/sync/steam";
+import { supabase } from "../../lib/supabaseClient";
 
 export default function DealsPage() {
   const [deals, setDeals] = useState<any[]>([]);
 
   useEffect(() => {
-    const loadDeals = async () => {
-      try {
-        const epicDeals = await fetchEpicDeals();
-        const steamDeals = await fetchSteamDeals();
-
-        // Verifica che i dati siano validi prima di usarli
-        const validDeals = [
-          ...((epicDeals || []) as any[]),
-          ...((steamDeals || []) as any[]),
-        ];
-
-        setDeals(validDeals);
-      } catch (error) {
-        console.error("Errore nel caricamento delle offerte", error);
-      }
+    const fetchDeals = async () => {
+      const { data: dealsData } = await supabase.from("deals").select("*");
+      setDeals(dealsData ?? []);
     };
-
-    loadDeals();
+    fetchDeals();
   }, []);
 
   return (
-    <div>
-      <h1>Offerte Disponibili</h1>
-      <ul>
-        {deals.length === 0 ? (
-          <p>Non ci sono offerte al momento.</p>
-        ) : (
-          deals.map((deal, index) => (
-            <li key={index}>
-              {deal.title} - {deal.price}
-            </li>
-          ))
-        )}
-      </ul>
-    </div>
+    <main style={{ padding: 40 }}>
+      <h1>🎮 Offerte e giochi gratis</h1>
+
+      {deals.length === 0 && <p>Nessuna offerta disponibile.</p>}
+
+      {deals.map((deal) => (
+        <div key={deal.deal_id} style={{ padding: 10, border: "1px solid #444", borderRadius: 10, marginTop: 20 }}>
+          <h2>{deal.title}</h2>
+          <p>💰 Prezzo: {deal.price_new}€</p>
+          <p>
+            <a href={deal.url} target="_blank" style={{ color: "#0070f3" }}>
+              Vai all'offerta
+            </a>
+          </p>
+        </div>
+      ))}
+    </main>
   );
 }
