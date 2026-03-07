@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 
+const ADMIN_EMAIL = "fmontis23@gmail.com";
+
 export default function CreateEventPage() {
   const router = useRouter();
 
@@ -15,22 +17,24 @@ export default function CreateEventPage() {
 
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const check = async () => {
-      const { data } = await supabase.auth.getUser();
+    const checkAdmin = async () => {
+      const { data, error } = await supabase.auth.getUser();
 
-      if (data?.user) {
-        setIsLoggedIn(true);
-      } else {
-        setIsLoggedIn(false);
+      if (error || !data?.user) {
+        setIsAdmin(false);
+        setCheckingAuth(false);
+        return;
       }
 
+      const userEmail = data.user.email ?? "";
+      setIsAdmin(userEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase());
       setCheckingAuth(false);
     };
 
-    check();
+    checkAdmin();
   }, []);
 
   const announceDiscord = async (content: string) => {
@@ -43,7 +47,6 @@ export default function CreateEventPage() {
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      console.error("Discord announce error:", data);
       alert(
         "Errore invio Discord: " + (data?.details ?? data?.error ?? "unknown")
       );
@@ -59,8 +62,8 @@ export default function CreateEventPage() {
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
 
-    if (!user) {
-      alert("Devi essere loggato.");
+    if (!user || (user.email ?? "").toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+      alert("Solo il moderatore può creare eventi.");
       setLoading(false);
       return;
     }
@@ -113,19 +116,19 @@ export default function CreateEventPage() {
 
     await announceDiscord(content);
 
-    alert("Evento creato ✅ (annuncio inviato su Discord)");
+    alert("Evento creato ✅");
     router.push("/events");
   };
 
   if (checkingAuth) {
     return (
       <main style={{ padding: 40, maxWidth: 560 }}>
-        <p>Controllo accesso in corso...</p>
+        <p>Controllo accesso moderatore...</p>
       </main>
     );
   }
 
-  if (!isLoggedIn) {
+  if (!isAdmin) {
     return (
       <main style={{ padding: 40, maxWidth: 560 }}>
         <button
@@ -143,23 +146,10 @@ export default function CreateEventPage() {
           ← Indietro
         </button>
 
-        <h1>Crea evento</h1>
+        <h1>Accesso riservato</h1>
         <p style={{ marginTop: 12, color: "#b8b8d0" }}>
-          Devi prima effettuare il login con Discord per creare un evento.
+          Solo il moderatore autorizzato può creare eventi.
         </p>
-
-        <button
-          onClick={() => router.push("/")}
-          style={{
-            marginTop: 16,
-            padding: "12px 16px",
-            borderRadius: 10,
-            border: "1px solid #444",
-            cursor: "pointer",
-          }}
-        >
-          Torna alla home
-        </button>
       </main>
     );
   }
@@ -239,8 +229,7 @@ export default function CreateEventPage() {
       />
 
       <p style={{ opacity: 0.8, marginTop: 6 }}>
-        Se lo compiliamo, Discord lo mostrerà nell’annuncio. Poi apriremo le
-        iscrizioni con un bottone.
+        Se lo compili, Discord lo mostrerà nell&apos;annuncio.
       </p>
 
       <label style={{ display: "block", marginTop: 12 }}>Max giocatori</label>
