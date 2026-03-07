@@ -1,17 +1,21 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
-
   try {
-
     const res = await fetch("https://www.cheapshark.com/api/1.0/deals?storeID=1&upperPrice=60&pageSize=20");
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("Error fetching deals:", errorText);
+      return NextResponse.json({ success: false, error: errorText });
+    }
+
     const deals = await res.json();
 
     const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
     for (const deal of deals) {
-
       const data = {
         title: deal.title,
         store: "Steam",
@@ -32,18 +36,14 @@ export async function GET() {
         },
         body: JSON.stringify(data)
       });
-
     }
 
     return NextResponse.json({ success: true });
-
   } catch (err) {
-
+    console.error("API Error:", err);
     return NextResponse.json({
-      success:false,
-      error:String(err)
+      success: false,
+      error: `Error occurred: ${err}`,
     });
-
   }
-
 }
