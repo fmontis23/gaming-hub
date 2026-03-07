@@ -22,6 +22,25 @@ type RegisteredMap = {
   [eventId: string]: boolean;
 };
 
+type TeamItem = {
+  id: string;
+  event_id: string;
+  name: string;
+};
+
+type TeamMemberItem = {
+  id: string;
+  team_id: string;
+  user_id: string;
+};
+
+type ProfileItem = {
+  id: string;
+  email: string | null;
+  display_name: string | null;
+  ubisoft_name: string | null;
+};
+
 export default function EventsPage() {
   const router = useRouter();
 
@@ -32,6 +51,9 @@ export default function EventsPage() {
   const [registered, setRegistered] = useState<RegisteredMap>({});
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [leavingId, setLeavingId] = useState<string | null>(null);
+  const [teams, setTeams] = useState<TeamItem[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMemberItem[]>([]);
+  const [profiles, setProfiles] = useState<ProfileItem[]>([]);
 
   useEffect(() => {
     loadAll();
@@ -68,6 +90,9 @@ export default function EventsPage() {
     if (eventIds.length === 0) {
       setCounts({});
       setRegistered({});
+      setTeams([]);
+      setTeamMembers([]);
+      setProfiles([]);
       setLoading(false);
       return;
     }
@@ -103,7 +128,72 @@ export default function EventsPage() {
 
     setCounts(nextCounts);
     setRegistered(nextRegistered);
+
+    const { data: teamsData, error: teamsError } = await supabase
+      .from("event_teams")
+      .select("id, event_id, name")
+      .in("event_id", eventIds);
+
+    if (teamsError) {
+      console.error("Errore caricamento team:", teamsError.message);
+      setTeams([]);
+      setTeamMembers([]);
+      setProfiles([]);
+      setLoading(false);
+      return;
+    }
+
+    const teamsList = teamsData || [];
+    setTeams(teamsList);
+
+    if (teamsList.length === 0) {
+      setTeamMembers([]);
+      setProfiles([]);
+      setLoading(false);
+      return;
+    }
+
+    const teamIds = teamsList.map((team) => team.id);
+
+    const { data: teamMembersData, error: teamMembersError } = await supabase
+      .from("event_team_members")
+      .select("id, team_id, user_id")
+      .in("team_id", teamIds);
+
+    if (teamMembersError) {
+      console.error("Errore caricamento membri team:", teamMembersError.message);
+      setTeamMembers([]);
+      setProfiles([]);
+      setLoading(false);
+      return;
+    }
+
+    const membersList = teamMembersData || [];
+    setTeamMembers(membersList);
+
+    const uniqueUserIds = [...new Set(membersList.map((m) => m.user_id))];
+
+    if (uniqueUserIds.length > 0) {
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, email, display_name, ubisoft_name")
+        .in("id", uniqueUserIds);
+
+      if (profilesError) {
+        console.error("Errore caricamento profili:", profilesError.message);
+        setProfiles([]);
+      } else {
+        setProfiles(profilesData || []);
+      }
+    } else {
+      setProfiles([]);
+    }
+
     setLoading(false);
+  };
+
+  const getProfile = (userIdValue: string) => {
+    return profiles.find((profile) => profile.id === userIdValue);
   };
 
   const joinEvent = async (eventId: string) => {
@@ -239,6 +329,7 @@ export default function EventsPage() {
             const currentCount = counts[event.id] || 0;
             const isRegistered = registered[event.id] || false;
             const isFull = currentCount >= event.max_players;
+            const eventTeams = teams.filter((team) => team.event_id === event.id);
 
             return (
               <div
@@ -376,6 +467,60 @@ export default function EventsPage() {
                     {joiningId === event.id ? "Iscrizione..." : "Partecipa"}
                   </button>
                 )}
+
+                <div style={{ marginTop: 16 }}>
+                  <strong>Squadre</strong>
+
+                  {eventTeams.length === 0 ? (
+                    <p style={{ opacity: 0.7, marginTop: 8 }}>
+                      Nessuna squadra generata.
+                    </p>
+                  ) : (
+                    <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                      {eventTeams.map((team) => {
+                        const members = teamMembers.filter(
+                          (member) => member.team_id === team.id
+                        );
+
+                        return (
+                          <div
+                            key={team.id}
+                            style={{
+                              padding: "10px 12px",
+                              borderRadius: 10,
+                              background: "rgba(255,255,255,0.04)",
+                              border: "1px solid #333",
+                            }}
+                          >
+                            <div style={{ fontWeight: 700, marginBottom: 8 }}>
+                              {team.name}
+                            </div>
+
+                            {members.length === 0 ? (
+                              <div style={{ opacity: 0.7 }}>Nessun membro</div>
+                            ) : (
+                              <div style={{ display: "grid", gap: 6 }}>
+                                {members.map((member, index) => {
+                                  const profile = getProfile(member.user_id);
+
+                                  return (
+                                    <div key={member.id} style={{ opacity: 0.85 }}>
+                                      {index + 1}.{" "}
+                                      {profile?.ubisoft_name ||
+                                        profile?.display_name ||
+                                        profile?.email ||
+                                        member.user_id}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
