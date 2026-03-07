@@ -51,6 +51,7 @@ export default function EventsPage() {
   const [registered, setRegistered] = useState<RegisteredMap>({});
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [leavingId, setLeavingId] = useState<string | null>(null);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [teams, setTeams] = useState<TeamItem[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMemberItem[]>([]);
   const [profiles, setProfiles] = useState<ProfileItem[]>([]);
@@ -245,6 +246,35 @@ export default function EventsPage() {
     loadAll();
   };
 
+  const generateTeams = async (eventId: string) => {
+    setGeneratingId(eventId);
+
+    try {
+      const res = await fetch("/api/events/generate-teams", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ eventId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Errore durante la generazione squadre");
+        return;
+      }
+
+      alert(data.message || "Squadre generate con successo ✅");
+      await loadAll();
+    } catch (error) {
+      alert("Errore durante la generazione squadre");
+      console.error(error);
+    } finally {
+      setGeneratingId(null);
+    }
+  };
+
   return (
     <main style={{ padding: 40 }}>
       <button
@@ -266,7 +296,8 @@ export default function EventsPage() {
         <h1 style={{ fontSize: 36, marginBottom: 10 }}>📅 Eventi Community</h1>
 
         <p style={{ color: "#b8b8d0", marginBottom: 20 }}>
-          Partecipa agli eventi del server, entra nelle squadre e gioca con la community.
+          Partecipa agli eventi del server, entra nelle squadre e gioca con la
+          community.
         </p>
       </section>
 
@@ -470,6 +501,27 @@ export default function EventsPage() {
 
                 <div style={{ marginTop: 16 }}>
                   <strong>Squadre</strong>
+
+                  <div style={{ marginTop: 10, marginBottom: 10 }}>
+                    <button
+                      onClick={() => generateTeams(event.id)}
+                      disabled={generatingId === event.id}
+                      style={{
+                        padding: "10px 14px",
+                        borderRadius: 10,
+                        border: "none",
+                        background: "#7c3aed",
+                        color: "white",
+                        cursor: "pointer",
+                        fontWeight: 700,
+                        opacity: generatingId === event.id ? 0.7 : 1,
+                      }}
+                    >
+                      {generatingId === event.id
+                        ? "Generazione..."
+                        : "Genera squadre"}
+                    </button>
+                  </div>
 
                   {eventTeams.length === 0 ? (
                     <p style={{ opacity: 0.7, marginTop: 8 }}>
