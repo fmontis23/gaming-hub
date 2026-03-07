@@ -4,27 +4,31 @@ export default function Home() {
 
       <section className="hero">
 
-        <h1 className="hero-title">
-          Benvenuto su Gaming Hub
-        </h1>
+        <div className="hero-content">
 
-        <p className="hero-subtitle">
-          Offerte PC, tornei community e squadre automatiche per giocare insieme.
-        </p>
+          <h1 className="hero-title">
+            🎮 Gaming Hub
+          </h1>
 
-        <div className="hero-buttons">
+          <p className="hero-subtitle">
+            Offerte PC, tornei community e squadre automatiche per giocare insieme.
+          </p>
 
-          <a
-            href="https://discord.gg/4NrqDfgP"
-            target="_blank"
-            className="hero-discord"
-          >
-            Entra nel Discord
-          </a>
+          <div className="hero-buttons">
 
-          <a href="/events" className="hero-events">
-            Guarda gli Eventi
-          </a>
+            <a
+              href="https://discord.gg/4NrqDfgP"
+              target="_blank"
+              className="hero-discord"
+            >
+              Unisciti alla Community
+            </a>
+
+            <a href="/events" className="hero-events">
+              Scopri gli Eventi
+            </a>
+
+          </div>
 
         </div>
 

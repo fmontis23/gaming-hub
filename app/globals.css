@@ -377,3 +377,55 @@ option {
   font-weight: 700;
   text-decoration: none;
 }
+.hero {
+  padding: 140px 20px;
+  text-align: center;
+  background: radial-gradient(circle at top, #1b1b2f, #0f0f17);
+}
+
+.hero-content {
+  max-width: 800px;
+  margin: auto;
+}
+
+.hero-title {
+  font-size: 56px;
+  font-weight: 900;
+  margin-bottom: 20px;
+}
+
+.hero-subtitle {
+  font-size: 20px;
+  color: #b8b8d0;
+  margin-bottom: 40px;
+}
+
+.hero-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.hero-discord {
+  background: #5865f2;
+  color: white;
+  padding: 14px 28px;
+  border-radius: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: 0.2s;
+}
+
+.hero-discord:hover {
+  transform: translateY(-2px);
+}
+
+.hero-events {
+  background: #1f1f2e;
+  color: white;
+  padding: 14px 28px;
+  border-radius: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1px solid #2e2e44;
+}
