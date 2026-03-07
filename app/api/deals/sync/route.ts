@@ -1,24 +1,27 @@
 import { NextResponse } from "next/server";
-import { fetchEpicDeals } from "./epic";
-import { fetchSteamDeals } from "./steam";
-import { supabase } from "../../../lib/supabaseClient";
+import { fetchEpicDeals } from "../epic";  // Corretto
+import { fetchSteamDeals } from "../steam"; // Corretto
+import { supabase } from "../../../lib/supabaseClient"; // Corretto
+
+const cheapSharkAPIUrl = "https://www.cheapshark.com/api/1.0/deals"; // CheapShark API URL
+const epicStoreID = 1;  // Store ID per Epic
+const steamStoreID = 2; // Store ID per Steam
 
 export const GET = async () => {
-  try {
-    // Recupero le offerte da Epic e Steam
-    const epicDeals = await fetchEpicDeals();
-    const steamDeals = await fetchSteamDeals();
+  // Recupera i deals da Epic e Steam
+  const epicDeals = await fetchEpicDeals();
+  const steamDeals = await fetchSteamDeals();
 
-    // Combina le offerte di Epic e Steam
-    const allDeals = [...epicDeals, ...steamDeals];
+  const deals = [...epicDeals, ...steamDeals];
 
-    // Salva nel database (tabella 'deals')
-    const { error } = await supabase.from("deals").upsert(allDeals);
-    if (error) throw new Error(error.message);
+  // Aggiungi i deals a Supabase
+  const { error } = await supabase.from("deals").upsert(deals, {
+    onConflict: ["id"],
+  });
 
-    return NextResponse.json({ success: true, deals: allDeals });
-  } catch (error: any) {
-    console.error("Errore nel recupero delle offerte:", error.message);
-    return NextResponse.json({ error: "Errore nel recupero delle offerte" }, { status: 500 });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  return NextResponse.json({ success: true });
 };
