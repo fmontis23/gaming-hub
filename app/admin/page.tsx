@@ -22,6 +22,12 @@ type RegistrationItem = {
   created_at: string;
 };
 
+type ProfileItem = {
+  id: string;
+  email: string | null;
+  display_name: string | null;
+};
+
 export default function AdminDashboard() {
   const router = useRouter();
 
@@ -29,6 +35,7 @@ export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [registrations, setRegistrations] = useState<RegistrationItem[]>([]);
+  const [profiles, setProfiles] = useState<ProfileItem[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
 
   useEffect(() => {
@@ -69,6 +76,7 @@ export default function AdminDashboard() {
       console.error("Errore caricamento eventi admin:", eventsError.message);
       setEvents([]);
       setRegistrations([]);
+      setProfiles([]);
       setLoadingEvents(false);
       return;
     }
@@ -78,6 +86,7 @@ export default function AdminDashboard() {
 
     if (eventsList.length === 0) {
       setRegistrations([]);
+      setProfiles([]);
       setLoadingEvents(false);
       return;
     }
@@ -96,12 +105,40 @@ export default function AdminDashboard() {
         registrationsError.message
       );
       setRegistrations([]);
+      setProfiles([]);
       setLoadingEvents(false);
       return;
     }
 
-    setRegistrations(registrationsData || []);
+    const registrationsList = registrationsData || [];
+    setRegistrations(registrationsList);
+
+    const uniqueUserIds = [...new Set(registrationsList.map((r) => r.user_id))];
+
+    if (uniqueUserIds.length === 0) {
+      setProfiles([]);
+      setLoadingEvents(false);
+      return;
+    }
+
+    const { data: profilesData, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, email, display_name")
+      .in("id", uniqueUserIds);
+
+    if (profilesError) {
+      console.error("Errore caricamento profili:", profilesError.message);
+      setProfiles([]);
+      setLoadingEvents(false);
+      return;
+    }
+
+    setProfiles(profilesData || []);
     setLoadingEvents(false);
+  };
+
+  const getProfile = (userId: string) => {
+    return profiles.find((profile) => profile.id === userId);
   };
 
   const openRegistrations = async (eventId: string, eventTitle: string) => {
@@ -316,28 +353,34 @@ export default function AdminDashboard() {
                       </p>
                     ) : (
                       <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                        {eventRegistrations.map((registration, index) => (
-                          <div
-                            key={`${registration.event_id}-${registration.user_id}`}
-                            style={{
-                              padding: "10px 12px",
-                              borderRadius: 10,
-                              background: "rgba(255,255,255,0.04)",
-                              border: "1px solid #333",
-                            }}
-                          >
-                            <div style={{ fontWeight: 700 }}>
-                              Giocatore #{index + 1}
+                        {eventRegistrations.map((registration, index) => {
+                          const profile = getProfile(registration.user_id);
+
+                          return (
+                            <div
+                              key={`${registration.event_id}-${registration.user_id}`}
+                              style={{
+                                padding: "10px 12px",
+                                borderRadius: 10,
+                                background: "rgba(255,255,255,0.04)",
+                                border: "1px solid #333",
+                              }}
+                            >
+                              <div style={{ fontWeight: 700 }}>
+                                {profile?.display_name || `Giocatore #${index + 1}`}
+                              </div>
+
+                              <div style={{ opacity: 0.75, marginTop: 4 }}>
+                                {profile?.email || registration.user_id}
+                              </div>
+
+                              <div style={{ opacity: 0.75, marginTop: 4 }}>
+                                Iscritto il:{" "}
+                                {new Date(registration.created_at).toLocaleString()}
+                              </div>
                             </div>
-                            <div style={{ opacity: 0.75, marginTop: 4 }}>
-                              ID utente: {registration.user_id}
-                            </div>
-                            <div style={{ opacity: 0.75, marginTop: 4 }}>
-                              Iscritto il:{" "}
-                              {new Date(registration.created_at).toLocaleString()}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
