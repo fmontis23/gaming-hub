@@ -1,9 +1,40 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "../../lib/supabaseClient";
+
+const ADMIN_EMAIL = "fmontis23@gmail.com";
 
 export default function AdminDashboard() {
   const router = useRouter();
+
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data, error } = await supabase.auth.getUser();
+
+      if (error || !data?.user) {
+        setIsAdmin(false);
+        setCheckingAuth(false);
+        return;
+      }
+
+      const userEmail = data.user.email ?? "";
+
+      if (userEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+        setIsAdmin(true);
+      } else {
+        setIsAdmin(false);
+      }
+
+      setCheckingAuth(false);
+    };
+
+    checkAdmin();
+  }, []);
 
   const sendTestDiscordMessage = async () => {
     const res = await fetch("/api/discord/announce", {
@@ -19,7 +50,7 @@ export default function AdminDashboard() {
       }),
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
       alert("Errore Discord: " + (data?.details || data?.error || "unknown"));
@@ -28,6 +59,49 @@ export default function AdminDashboard() {
 
     alert("Messaggio Discord inviato ✅");
   };
+
+  if (checkingAuth) {
+    return (
+      <main style={{ padding: 24 }}>
+        <p>Controllo accesso moderatore...</p>
+      </main>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <main style={{ padding: 24, maxWidth: 700, margin: "0 auto" }}>
+        <button
+          onClick={() => router.back()}
+          style={{
+            padding: "8px 14px",
+            borderRadius: 8,
+            border: "1px solid #444",
+            background: "rgba(255,255,255,0.05)",
+            color: "white",
+            cursor: "pointer",
+            marginBottom: 16,
+          }}
+        >
+          ← Indietro
+        </button>
+
+        <div
+          style={{
+            border: "1px solid #444",
+            borderRadius: 14,
+            padding: 20,
+            background: "rgba(255,255,255,0.02)",
+          }}
+        >
+          <h1 style={{ marginTop: 0 }}>Accesso riservato</h1>
+          <p style={{ opacity: 0.85 }}>
+            Questa area moderatore è disponibile solo per l&apos;account autorizzato.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main style={{ padding: 24 }}>
@@ -48,7 +122,7 @@ export default function AdminDashboard() {
 
       <h1 style={{ marginTop: 0 }}>🛠 Dashboard Moderatore</h1>
       <p style={{ opacity: 0.85 }}>
-        Da qui gestisci eventi/tornei e offerte PC.
+        Area privata moderatore. Da qui gestisci eventi, tornei, deals e annunci Discord.
       </p>
 
       <div
@@ -59,31 +133,24 @@ export default function AdminDashboard() {
           gap: 12,
         }}
       >
-        <a href="/admin/events" style={card()}>
-          <b>🎮 Gestisci Eventi</b>
+        <a href="/create-event" style={card()}>
+          <b>➕ Crea Evento</b>
           <div style={{ opacity: 0.85, marginTop: 6 }}>
-            Crea, elimina e controlla gli eventi
-          </div>
-        </a>
-
-        <a href="/admin/deals" style={card()}>
-          <b>💸 Gestisci Deals</b>
-          <div style={{ opacity: 0.85, marginTop: 6 }}>
-            Aggiungi / elimina offerte e giochi gratis
+            Crea un nuovo evento e invia l&apos;annuncio su Discord
           </div>
         </a>
 
         <a href="/events" style={card()}>
-          <b>🏆 Eventi (pubblico)</b>
+          <b>🎮 Eventi pubblici</b>
           <div style={{ opacity: 0.85, marginTop: 6 }}>
-            Visualizza come un utente
+            Controlla come gli utenti vedono gli eventi
           </div>
         </a>
 
         <a href="/deals" style={card()}>
-          <b>🎁 Deals (pubblico)</b>
+          <b>🎁 Deals pubblici</b>
           <div style={{ opacity: 0.85, marginTop: 6 }}>
-            Visualizza offerte sul sito
+            Controlla i giochi gratis e le offerte sul sito
           </div>
         </a>
       </div>
