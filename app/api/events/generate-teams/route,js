@@ -17,8 +17,55 @@ function shuffle(array) {
   return arr;
 }
 
+async function getAuthorizedUserId(req) {
+  const authHeader = req.headers.get("authorization");
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return null;
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser(token);
+
+  if (error || !user) {
+    return null;
+  }
+
+  return user.id;
+}
+
+async function isAdmin(userId) {
+  if (!userId) return false;
+
+  const { data, error } = await supabase
+    .from("admins")
+    .select("id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Errore controllo admin:", error.message);
+    return false;
+  }
+
+  return !!data;
+}
+
 export async function POST(req) {
   try {
+    const userId = await getAuthorizedUserId(req);
+
+    if (!(await isAdmin(userId))) {
+      return NextResponse.json(
+        { error: "Non autorizzato." },
+        { status: 403 }
+      );
+    }
+
     const { eventId } = await req.json();
 
     if (!eventId) {

@@ -47,11 +47,13 @@ export default function EventsPage() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [counts, setCounts] = useState<RegistrationCountMap>({});
   const [registered, setRegistered] = useState<RegisteredMap>({});
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [leavingId, setLeavingId] = useState<string | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [resettingId, setResettingId] = useState<string | null>(null);
   const [teams, setTeams] = useState<TeamItem[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMemberItem[]>([]);
   const [profiles, setProfiles] = useState<ProfileItem[]>([]);
@@ -68,6 +70,23 @@ export default function EventsPage() {
     } = await supabase.auth.getUser();
 
     setUserId(user?.id ?? null);
+
+    if (user?.id) {
+      const { data: adminData, error: adminError } = await supabase
+        .from("admins")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (adminError) {
+        console.error("Errore controllo admin:", adminError.message);
+        setIsAdmin(false);
+      } else {
+        setIsAdmin(!!adminData);
+      }
+    } else {
+      setIsAdmin(false);
+    }
 
     const { data: eventsData, error: eventsError } = await supabase
       .from("events")
@@ -250,10 +269,15 @@ export default function EventsPage() {
     setGeneratingId(eventId);
 
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       const res = await fetch("/api/events/generate-teams", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
         },
         body: JSON.stringify({ eventId }),
       });
@@ -272,6 +296,46 @@ export default function EventsPage() {
       console.error(error);
     } finally {
       setGeneratingId(null);
+    }
+  };
+
+  const resetTeams = async (eventId: string) => {
+    const confirmed = window.confirm(
+      "Sei sicuro di voler resettare le squadre di questo evento?"
+    );
+
+    if (!confirmed) return;
+
+    setResettingId(eventId);
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const res = await fetch("/api/events/reset-teams", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+        },
+        body: JSON.stringify({ eventId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Errore durante il reset squadre");
+        return;
+      }
+
+      alert(data.message || "Squadre resettate con successo ✅");
+      await loadAll();
+    } catch (error) {
+      alert("Errore durante il reset squadre");
+      console.error(error);
+    } finally {
+      setResettingId(null);
     }
   };
 
@@ -361,6 +425,10 @@ export default function EventsPage() {
             const isRegistered = registered[event.id] || false;
             const isFull = currentCount >= event.max_players;
             const eventTeams = teams.filter((team) => team.event_id === event.id);
+            const hasTeams = eventTeams.length > 0;
+            const canGenerate =
+              isAdmin && currentCount >= 2 && !hasTeams;
+            const canReset = isAdmin && hasTeams;
 
             return (
               <div
@@ -502,26 +570,57 @@ export default function EventsPage() {
                 <div style={{ marginTop: 16 }}>
                   <strong>Squadre</strong>
 
-                  <div style={{ marginTop: 10, marginBottom: 10 }}>
-                    <button
-                      onClick={() => generateTeams(event.id)}
-                      disabled={generatingId === event.id}
+                  {isAdmin && (
+                    <div
                       style={{
-                        padding: "10px 14px",
-                        borderRadius: 10,
-                        border: "none",
-                        background: "#7c3aed",
-                        color: "white",
-                        cursor: "pointer",
-                        fontWeight: 700,
-                        opacity: generatingId === event.id ? 0.7 : 1,
+                        marginTop: 10,
+                        marginBottom: 10,
+                        display: "flex",
+                        gap: 10,
+                        flexWrap: "wrap",
                       }}
                     >
-                      {generatingId === event.id
-                        ? "Generazione..."
-                        : "Genera squadre"}
-                    </button>
-                  </div>
+                      <button
+                        onClick={() => generateTeams(event.id)}
+                        disabled={!canGenerate || generatingId === event.id}
+                        style={{
+                          padding: "10px 14px",
+                          borderRadius: 10,
+                          border: "none",
+                          background: "#7c3aed",
+                          color: "white",
+                          cursor: canGenerate ? "pointer" : "not-allowed",
+                          fontWeight: 700,
+                          opacity:
+                            !canGenerate || generatingId === event.id ? 0.6 : 1,
+                        }}
+                      >
+                        {generatingId === event.id
+                          ? "Generazione..."
+                          : "Genera squadre"}
+                      </button>
+
+                      <button
+                        onClick={() => resetTeams(event.id)}
+                        disabled={!canReset || resettingId === event.id}
+                        style={{
+                          padding: "10px 14px",
+                          borderRadius: 10,
+                          border: "none",
+                          background: "#dc2626",
+                          color: "white",
+                          cursor: canReset ? "pointer" : "not-allowed",
+                          fontWeight: 700,
+                          opacity:
+                            !canReset || resettingId === event.id ? 0.6 : 1,
+                        }}
+                      >
+                        {resettingId === event.id
+                          ? "Reset..."
+                          : "Reset squadre"}
+                      </button>
+                    </div>
+                  )}
 
                   {eventTeams.length === 0 ? (
                     <p style={{ opacity: 0.7, marginTop: 8 }}>
