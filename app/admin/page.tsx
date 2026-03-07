@@ -16,12 +16,19 @@ type EventItem = {
   registrations_open_at: string | null;
 };
 
+type RegistrationItem = {
+  event_id: string;
+  user_id: string;
+  created_at: string;
+};
+
 export default function AdminDashboard() {
   const router = useRouter();
 
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [registrations, setRegistrations] = useState<RegistrationItem[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
 
   useEffect(() => {
@@ -41,31 +48,59 @@ export default function AdminDashboard() {
       setCheckingAuth(false);
 
       if (admin) {
-        loadEvents();
+        loadData();
       }
     };
 
     checkAdmin();
   }, []);
 
-  const loadEvents = async () => {
+  const loadData = async () => {
     setLoadingEvents(true);
 
-    const { data, error } = await supabase
+    const { data: eventsData, error: eventsError } = await supabase
       .from("events")
       .select(
         "id, title, description, event_date, max_players, registrations_open, registrations_open_at"
       )
       .order("event_date", { ascending: true });
 
-    if (error) {
-      console.error("Errore caricamento eventi admin:", error.message);
+    if (eventsError) {
+      console.error("Errore caricamento eventi admin:", eventsError.message);
       setEvents([]);
+      setRegistrations([]);
       setLoadingEvents(false);
       return;
     }
 
-    setEvents(data || []);
+    const eventsList = eventsData || [];
+    setEvents(eventsList);
+
+    if (eventsList.length === 0) {
+      setRegistrations([]);
+      setLoadingEvents(false);
+      return;
+    }
+
+    const eventIds = eventsList.map((event) => event.id);
+
+    const { data: registrationsData, error: registrationsError } = await supabase
+      .from("event_registrations")
+      .select("event_id, user_id, created_at")
+      .in("event_id", eventIds)
+      .order("created_at", { ascending: true });
+
+    if (registrationsError) {
+      console.error(
+        "Errore caricamento iscrizioni admin:",
+        registrationsError.message
+      );
+      setRegistrations([]);
+      setLoadingEvents(false);
+      return;
+    }
+
+    setRegistrations(registrationsData || []);
     setLoadingEvents(false);
   };
 
@@ -94,7 +129,7 @@ export default function AdminDashboard() {
     });
 
     alert("Iscrizioni aperte ✅");
-    loadEvents();
+    loadData();
   };
 
   const sendTestDiscordMessage = async () => {
@@ -154,7 +189,7 @@ export default function AdminDashboard() {
 
       <h1 style={{ marginTop: 0 }}>🛠 Dashboard Moderatore</h1>
       <p style={{ opacity: 0.85 }}>
-        Area privata moderatore. Da qui gestisci eventi, tornei, deals e annunci Discord.
+        Area privata moderatore. Da qui gestisci eventi, iscrizioni e annunci Discord.
       </p>
 
       <div
@@ -208,66 +243,107 @@ export default function AdminDashboard() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
               gap: 16,
             }}
           >
-            {events.map((event) => (
-              <div key={event.id} style={panelStyle}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 10,
-                    marginBottom: 10,
-                  }}
-                >
-                  <strong>{event.title}</strong>
-                  <span
+            {events.map((event) => {
+              const eventRegistrations = registrations.filter(
+                (registration) => registration.event_id === event.id
+              );
+
+              return (
+                <div key={event.id} style={panelStyle}>
+                  <div
                     style={{
-                      color: event.registrations_open ? "#4ade80" : "#facc15",
-                      fontWeight: 700,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      marginBottom: 10,
                     }}
                   >
-                    {event.registrations_open ? "Aperte" : "Chiuse"}
-                  </span>
-                </div>
+                    <strong>{event.title}</strong>
+                    <span
+                      style={{
+                        color: event.registrations_open ? "#4ade80" : "#facc15",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {event.registrations_open ? "Aperte" : "Chiuse"}
+                    </span>
+                  </div>
 
-                {event.description && (
-                  <p style={{ opacity: 0.85 }}>{event.description}</p>
-                )}
+                  {event.description && (
+                    <p style={{ opacity: 0.85 }}>{event.description}</p>
+                  )}
 
-                <p style={{ opacity: 0.85 }}>
-                  📅 {new Date(event.event_date).toLocaleString()}
-                </p>
-
-                <p style={{ opacity: 0.85 }}>
-                  👥 Max giocatori: {event.max_players}
-                </p>
-
-                {event.registrations_open_at && (
                   <p style={{ opacity: 0.85 }}>
-                    🟡 Apertura iscrizioni:{" "}
-                    {new Date(event.registrations_open_at).toLocaleString()}
+                    📅 {new Date(event.event_date).toLocaleString()}
                   </p>
-                )}
 
-                {!event.registrations_open && (
-                  <button
-                    onClick={() => openRegistrations(event.id, event.title)}
-                    style={{
-                      marginTop: 12,
-                      padding: "10px 14px",
-                      borderRadius: 10,
-                      border: "1px solid #444",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Apri iscrizioni
-                  </button>
-                )}
-              </div>
-            ))}
+                  <p style={{ opacity: 0.85 }}>
+                    👥 Iscritti: {eventRegistrations.length}/{event.max_players}
+                  </p>
+
+                  {event.registrations_open_at && (
+                    <p style={{ opacity: 0.85 }}>
+                      🟡 Apertura iscrizioni:{" "}
+                      {new Date(event.registrations_open_at).toLocaleString()}
+                    </p>
+                  )}
+
+                  {!event.registrations_open && (
+                    <button
+                      onClick={() => openRegistrations(event.id, event.title)}
+                      style={{
+                        marginTop: 12,
+                        padding: "10px 14px",
+                        borderRadius: 10,
+                        border: "1px solid #444",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Apri iscrizioni
+                    </button>
+                  )}
+
+                  <div style={{ marginTop: 16 }}>
+                    <strong>Iscritti</strong>
+
+                    {eventRegistrations.length === 0 ? (
+                      <p style={{ opacity: 0.7, marginTop: 8 }}>
+                        Nessun iscritto per ora.
+                      </p>
+                    ) : (
+                      <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                        {eventRegistrations.map((registration, index) => (
+                          <div
+                            key={`${registration.event_id}-${registration.user_id}`}
+                            style={{
+                              padding: "10px 12px",
+                              borderRadius: 10,
+                              background: "rgba(255,255,255,0.04)",
+                              border: "1px solid #333",
+                            }}
+                          >
+                            <div style={{ fontWeight: 700 }}>
+                              Giocatore #{index + 1}
+                            </div>
+                            <div style={{ opacity: 0.75, marginTop: 4 }}>
+                              ID utente: {registration.user_id}
+                            </div>
+                            <div style={{ opacity: 0.75, marginTop: 4 }}>
+                              Iscritto il:{" "}
+                              {new Date(registration.created_at).toLocaleString()}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
