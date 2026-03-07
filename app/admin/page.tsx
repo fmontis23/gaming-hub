@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 
 const ADMIN_EMAIL = "fmontis23@gmail.com";
+const TEAM_SIZE = 5;
 
 type EventItem = {
   id: string;
@@ -29,6 +30,18 @@ type ProfileItem = {
   ubisoft_name: string | null;
 };
 
+type TeamItem = {
+  id: string;
+  event_id: string;
+  name: string;
+};
+
+type TeamMemberItem = {
+  id: string;
+  team_id: string;
+  user_id: string;
+};
+
 export default function AdminDashboard() {
   const router = useRouter();
 
@@ -37,7 +50,10 @@ export default function AdminDashboard() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [registrations, setRegistrations] = useState<RegistrationItem[]>([]);
   const [profiles, setProfiles] = useState<ProfileItem[]>([]);
+  const [teams, setTeams] = useState<TeamItem[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMemberItem[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
+  const [generatingForEvent, setGeneratingForEvent] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -78,6 +94,8 @@ export default function AdminDashboard() {
       setEvents([]);
       setRegistrations([]);
       setProfiles([]);
+      setTeams([]);
+      setTeamMembers([]);
       setLoadingEvents(false);
       return;
     }
@@ -88,6 +106,8 @@ export default function AdminDashboard() {
     if (eventsList.length === 0) {
       setRegistrations([]);
       setProfiles([]);
+      setTeams([]);
+      setTeamMembers([]);
       setLoadingEvents(false);
       return;
     }
@@ -107,6 +127,8 @@ export default function AdminDashboard() {
       );
       setRegistrations([]);
       setProfiles([]);
+      setTeams([]);
+      setTeamMembers([]);
       setLoadingEvents(false);
       return;
     }
@@ -116,25 +138,56 @@ export default function AdminDashboard() {
 
     const uniqueUserIds = [...new Set(registrationsList.map((r) => r.user_id))];
 
-    if (uniqueUserIds.length === 0) {
+    if (uniqueUserIds.length > 0) {
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, email, display_name, ubisoft_name")
+        .in("id", uniqueUserIds);
+
+      if (profilesError) {
+        console.error("Errore caricamento profili:", profilesError.message);
+        setProfiles([]);
+      } else {
+        setProfiles(profilesData || []);
+      }
+    } else {
       setProfiles([]);
+    }
+
+    const { data: teamsData, error: teamsError } = await supabase
+      .from("event_teams")
+      .select("id, event_id, name")
+      .in("event_id", eventIds);
+
+    if (teamsError) {
+      console.error("Errore caricamento team:", teamsError.message);
+      setTeams([]);
+      setTeamMembers([]);
       setLoadingEvents(false);
       return;
     }
 
-    const { data: profilesData, error: profilesError } = await supabase
-      .from("profiles")
-      .select("id, email, display_name, ubisoft_name")
-      .in("id", uniqueUserIds);
+    const teamsList = teamsData || [];
+    setTeams(teamsList);
 
-    if (profilesError) {
-      console.error("Errore caricamento profili:", profilesError.message);
-      setProfiles([]);
-      setLoadingEvents(false);
-      return;
+    if (teamsList.length > 0) {
+      const teamIds = teamsList.map((team) => team.id);
+
+      const { data: teamMembersData, error: teamMembersError } = await supabase
+        .from("event_team_members")
+        .select("id, team_id, user_id")
+        .in("team_id", teamIds);
+
+      if (teamMembersError) {
+        console.error("Errore caricamento membri team:", teamMembersError.message);
+        setTeamMembers([]);
+      } else {
+        setTeamMembers(teamMembersData || []);
+      }
+    } else {
+      setTeamMembers([]);
     }
 
-    setProfiles(profilesData || []);
     setLoadingEvents(false);
   };
 
@@ -167,6 +220,95 @@ export default function AdminDashboard() {
     });
 
     alert("Iscrizioni aperte ✅");
+    loadData();
+  };
+
+  const shuffleArray = (array: string[]) => {
+    const copy = [...array];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+
+  const generateTeams = async (eventId: string, eventTitle: string) => {
+    const eventRegistrations = registrations.filter((r) => r.event_id === eventId);
+
+    if (eventRegistrations.length < TEAM_SIZE) {
+      alert(`Servono almeno ${TEAM_SIZE} iscritti per generare una squadra.`);
+      return;
+    }
+
+    setGeneratingForEvent(eventId);
+
+    const userIds = eventRegistrations.map((r) => r.user_id);
+    const shuffledUserIds = shuffleArray(userIds);
+
+    const existingTeams = teams.filter((team) => team.event_id === eventId);
+    const existingTeamIds = existingTeams.map((team) => team.id);
+
+    if (existingTeamIds.length > 0) {
+      await supabase.from("event_team_members").delete().in("team_id", existingTeamIds);
+      await supabase.from("event_teams").delete().in("id", existingTeamIds);
+    }
+
+    const teamChunks: string[][] = [];
+    for (let i = 0; i < shuffledUserIds.length; i += TEAM_SIZE) {
+      teamChunks.push(shuffledUserIds.slice(i, i + TEAM_SIZE));
+    }
+
+    const teamNames = teamChunks.map((_, index) => `Team ${String.fromCharCode(65 + index)}`);
+
+    const { data: insertedTeams, error: teamsInsertError } = await supabase
+      .from("event_teams")
+      .insert(
+        teamNames.map((name) => ({
+          event_id: eventId,
+          name,
+        }))
+      )
+      .select("id, event_id, name");
+
+    if (teamsInsertError || !insertedTeams) {
+      setGeneratingForEvent(null);
+      alert("Errore creazione squadre: " + (teamsInsertError?.message || "unknown"));
+      return;
+    }
+
+    const membersToInsert = insertedTeams.flatMap((team, index) =>
+      teamChunks[index].map((userId) => ({
+        team_id: team.id,
+        user_id: userId,
+      }))
+    );
+
+    const { error: membersInsertError } = await supabase
+      .from("event_team_members")
+      .insert(membersToInsert);
+
+    setGeneratingForEvent(null);
+
+    if (membersInsertError) {
+      alert("Errore salvataggio membri squadre: " + membersInsertError.message);
+      return;
+    }
+
+    await fetch("/api/discord/announce", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        content:
+          `⚔️ **Squadre generate!**\n` +
+          `🎮 **${eventTitle}**\n` +
+          `👥 Team creati: **${insertedTeams.length}**\n` +
+          `➡️ Vai agli eventi: https://gaming-hub-lime.vercel.app/events`,
+      }),
+    });
+
+    alert("Squadre generate ✅");
     loadData();
   };
 
@@ -227,7 +369,7 @@ export default function AdminDashboard() {
 
       <h1 style={{ marginTop: 0 }}>🛠 Dashboard Moderatore</h1>
       <p style={{ opacity: 0.85 }}>
-        Area privata moderatore. Da qui gestisci eventi, iscrizioni e annunci Discord.
+        Area privata moderatore. Da qui gestisci eventi, iscrizioni, squadre e annunci Discord.
       </p>
 
       <div
@@ -290,6 +432,8 @@ export default function AdminDashboard() {
                 (registration) => registration.event_id === event.id
               );
 
+              const eventTeams = teams.filter((team) => team.event_id === event.id);
+
               return (
                 <div key={event.id} style={panelStyle}>
                   <div
@@ -330,20 +474,26 @@ export default function AdminDashboard() {
                     </p>
                   )}
 
-                  {!event.registrations_open && (
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+                    {!event.registrations_open && (
+                      <button
+                        onClick={() => openRegistrations(event.id, event.title)}
+                        style={smallButtonStyle}
+                      >
+                        Apri iscrizioni
+                      </button>
+                    )}
+
                     <button
-                      onClick={() => openRegistrations(event.id, event.title)}
-                      style={{
-                        marginTop: 12,
-                        padding: "10px 14px",
-                        borderRadius: 10,
-                        border: "1px solid #444",
-                        cursor: "pointer",
-                      }}
+                      onClick={() => generateTeams(event.id, event.title)}
+                      disabled={generatingForEvent === event.id}
+                      style={smallButtonStyle}
                     >
-                      Apri iscrizioni
+                      {generatingForEvent === event.id
+                        ? "Generazione..."
+                        : "Genera squadre"}
                     </button>
-                  )}
+                  </div>
 
                   <div style={{ marginTop: 16 }}>
                     <strong>Iscritti</strong>
@@ -360,12 +510,7 @@ export default function AdminDashboard() {
                           return (
                             <div
                               key={`${registration.event_id}-${registration.user_id}`}
-                              style={{
-                                padding: "10px 12px",
-                                borderRadius: 10,
-                                background: "rgba(255,255,255,0.04)",
-                                border: "1px solid #333",
-                              }}
+                              style={subCardStyle}
                             >
                               <div style={{ fontWeight: 700 }}>
                                 {profile?.display_name || `Giocatore #${index + 1}`}
@@ -383,6 +528,52 @@ export default function AdminDashboard() {
                                 Iscritto il:{" "}
                                 {new Date(registration.created_at).toLocaleString()}
                               </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ marginTop: 16 }}>
+                    <strong>Squadre</strong>
+
+                    {eventTeams.length === 0 ? (
+                      <p style={{ opacity: 0.7, marginTop: 8 }}>
+                        Nessuna squadra generata.
+                      </p>
+                    ) : (
+                      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                        {eventTeams.map((team) => {
+                          const members = teamMembers.filter(
+                            (member) => member.team_id === team.id
+                          );
+
+                          return (
+                            <div key={team.id} style={subCardStyle}>
+                              <div style={{ fontWeight: 700, marginBottom: 8 }}>
+                                {team.name}
+                              </div>
+
+                              {members.length === 0 ? (
+                                <div style={{ opacity: 0.7 }}>Nessun membro</div>
+                              ) : (
+                                <div style={{ display: "grid", gap: 6 }}>
+                                  {members.map((member, index) => {
+                                    const profile = getProfile(member.user_id);
+
+                                    return (
+                                      <div key={member.id} style={{ opacity: 0.85 }}>
+                                        {index + 1}.{" "}
+                                        {profile?.ubisoft_name ||
+                                          profile?.display_name ||
+                                          profile?.email ||
+                                          member.user_id}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -416,11 +607,25 @@ const actionButtonStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
+const smallButtonStyle: React.CSSProperties = {
+  padding: "10px 14px",
+  borderRadius: 10,
+  border: "1px solid #444",
+  cursor: "pointer",
+};
+
 const panelStyle: React.CSSProperties = {
   border: "1px solid #444",
   borderRadius: 14,
   padding: 20,
   background: "rgba(255,255,255,0.02)",
+};
+
+const subCardStyle: React.CSSProperties = {
+  padding: "10px 12px",
+  borderRadius: 10,
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid #333",
 };
 
 function card(): React.CSSProperties {
