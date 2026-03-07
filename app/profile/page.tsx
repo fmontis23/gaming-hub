@@ -1,224 +1,77 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 
-type DbUser = {
-  id: string;
-  auth_user_id: string | null;
-  discord_username: string | null;
-  avatar: string | null;
-  ubisoft_nickname: string | null;
-  rank: string | null;
-  platform: string | null;
-};
-
 export default function ProfilePage() {
-  const router = useRouter();
+  const [discordName, setDiscordName] = useState("");
+  const [ubisoftName, setUbisoftName] = useState("");
   const [loading, setLoading] = useState(true);
-  const [authUser, setAuthUser] = useState<any>(null);
-  const [dbUser, setDbUser] = useState<DbUser | null>(null);
-  const [logged, setLogged] = useState(false);
-
-  const [ubisoftNickname, setUbisoftNickname] = useState("");
-  const [platform, setPlatform] = useState("PC");
-  const [rank, setRank] = useState("");
 
   useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase.auth.getUser();
-
-      if (!data?.user) {
-        setLogged(false);
-        setLoading(false);
-        return;
-      }
-
-      setLogged(true);
-
-      const u = data.user;
-      setAuthUser(u);
-
-      const discordUsername =
-        u.user_metadata?.global_name ||
-        u.user_metadata?.full_name ||
-        u.user_metadata?.name ||
-        u.user_metadata?.preferred_username ||
-        "Utente";
-
-      const avatar =
-        u.user_metadata?.avatar_url ||
-        u.user_metadata?.picture ||
-        null;
-
-      const { error: upsertError } = await supabase
-        .from("users")
-        .upsert(
-          {
-            auth_user_id: u.id,
-            discord_username: discordUsername,
-            avatar,
-          },
-          { onConflict: "auth_user_id" }
-        );
-
-      if (upsertError) {
-        console.error("upsert:", upsertError.message);
-      }
-
-      const { data: row, error: readError } = await supabase
-        .from("users")
-        .select("*")
-        .eq("auth_user_id", u.id)
-        .single();
-
-      if (readError) {
-        console.error("read:", readError.message);
-      } else {
-        setDbUser(row as DbUser);
-        setUbisoftNickname(row?.ubisoft_nickname ?? "");
-        setPlatform(row?.platform ?? "PC");
-        setRank(row?.rank ?? "");
-      }
-
-      setLoading(false);
-    };
-
-    load();
+    loadProfile();
   }, []);
 
-  const loginWithDiscord = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "discord",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+  const loadProfile = async () => {
+    const { data: auth } = await supabase.auth.getUser();
+    const user = auth?.user;
 
-    if (error) {
-      alert("Errore login Discord: " + error.message);
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("discord_name, ubisoft_name")
+      .eq("id", user.id)
+      .single();
+
+    if (data) {
+      setDiscordName(data.discord_name || "");
+      setUbisoftName(data.ubisoft_name || "");
     }
+
+    setLoading(false);
   };
 
-  const saveGamingInfo = async () => {
-    if (!authUser) return;
+  const saveProfile = async () => {
+    const { data: auth } = await supabase.auth.getUser();
+    const user = auth?.user;
+
+    if (!user) return;
 
     const { error } = await supabase
-      .from("users")
+      .from("profiles")
       .update({
-        ubisoft_nickname: ubisoftNickname.trim(),
-        platform,
-        rank: rank.trim(),
+        ubisoft_name: ubisoftName,
       })
-      .eq("auth_user_id", authUser.id);
+      .eq("id", user.id);
 
     if (error) {
       alert("Errore salvataggio: " + error.message);
       return;
     }
 
-    alert("Dati salvati ✅");
-  };
-
-  const logout = async () => {
-    await supabase.auth.signOut();
-    router.replace("/");
+    alert("Profilo aggiornato ✅");
   };
 
   if (loading) {
     return (
       <main style={{ padding: 40 }}>
-        <button
-          onClick={() => router.back()}
-          style={{
-            padding: "8px 14px",
-            borderRadius: 8,
-            border: "1px solid #444",
-            background: "rgba(255,255,255,0.05)",
-            color: "white",
-            cursor: "pointer",
-            marginBottom: 16,
-          }}
-        >
-          ← Indietro
-        </button>
-
         <p>Caricamento profilo...</p>
       </main>
     );
   }
 
-  if (!logged) {
-    return (
-      <main style={{ padding: 40, maxWidth: 520 }}>
-        <button
-          onClick={() => router.back()}
-          style={{
-            padding: "8px 14px",
-            borderRadius: 8,
-            border: "1px solid #444",
-            background: "rgba(255,255,255,0.05)",
-            color: "white",
-            cursor: "pointer",
-            marginBottom: 16,
-          }}
-        >
-          ← Indietro
-        </button>
-
-        <h1>Profilo</h1>
-        <p>Per accedere a profilo, eventi e tornei devi prima fare login con Discord.</p>
-
-        <button
-          onClick={loginWithDiscord}
-          style={{
-            marginTop: 14,
-            padding: "12px 16px",
-            borderRadius: 10,
-            border: "1px solid #444",
-            cursor: "pointer",
-          }}
-        >
-          Login con Discord
-        </button>
-      </main>
-    );
-  }
-
   return (
-    <main style={{ padding: 40, maxWidth: 520 }}>
-      <button
-        onClick={() => router.back()}
-        style={{
-          padding: "8px 14px",
-          borderRadius: 8,
-          border: "1px solid #444",
-          background: "rgba(255,255,255,0.05)",
-          color: "white",
-          cursor: "pointer",
-          marginBottom: 16,
-        }}
-      >
-        ← Indietro
-      </button>
-
+    <main style={{ padding: 40, maxWidth: 500 }}>
       <h1>Profilo</h1>
-      <p>
-        Loggato come: <b>{dbUser?.discord_username ?? "utente"}</b>
-      </p>
 
-      <hr style={{ margin: "16px 0" }} />
-
-      <h2>Dati Gaming</h2>
-
-      <label style={{ display: "block", marginTop: 12 }}>
-        Nickname Ubisoft
+      <label style={{ display: "block", marginTop: 20 }}>
+        Nome Discord
       </label>
+
       <input
-        value={ubisoftNickname}
-        onChange={(e) => setUbisoftNickname(e.target.value)}
-        placeholder="Es: Fmontis23"
+        value={discordName}
+        disabled
         style={{
           width: "100%",
           padding: 10,
@@ -227,31 +80,14 @@ export default function ProfilePage() {
         }}
       />
 
-      <label style={{ display: "block", marginTop: 12 }}>
-        Piattaforma
+      <label style={{ display: "block", marginTop: 20 }}>
+        Nome Ubisoft
       </label>
-      <select
-        value={platform}
-        onChange={(e) => setPlatform(e.target.value)}
-        style={{
-          width: "100%",
-          padding: 10,
-          borderRadius: 10,
-          border: "1px solid #444",
-        }}
-      >
-        <option>PC</option>
-        <option>PlayStation</option>
-        <option>Xbox</option>
-      </select>
 
-      <label style={{ display: "block", marginTop: 12 }}>
-        Rank (opzionale)
-      </label>
       <input
-        value={rank}
-        onChange={(e) => setRank(e.target.value)}
-        placeholder="Es: Emerald / Diamond / Champ..."
+        value={ubisoftName}
+        onChange={(e) => setUbisoftName(e.target.value)}
+        placeholder="Es: MontisR6"
         style={{
           width: "100%",
           padding: 10,
@@ -259,45 +95,18 @@ export default function ProfilePage() {
           border: "1px solid #444",
         }}
       />
-
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
-        <button
-          onClick={saveGamingInfo}
-          style={{
-            padding: "12px 16px",
-            borderRadius: 10,
-            border: "1px solid #444",
-            cursor: "pointer",
-          }}
-        >
-          Salva
-        </button>
-
-        <button
-          onClick={() => router.push("/events")}
-          style={{
-            padding: "12px 16px",
-            borderRadius: 10,
-            border: "1px solid #444",
-            cursor: "pointer",
-          }}
-        >
-          Vai agli eventi
-        </button>
-      </div>
-
-      <hr style={{ margin: "16px 0" }} />
 
       <button
-        onClick={logout}
+        onClick={saveProfile}
         style={{
-          padding: "10px 14px",
+          marginTop: 20,
+          padding: "12px 16px",
           borderRadius: 10,
           border: "1px solid #444",
           cursor: "pointer",
         }}
       >
-        Logout
+        Salva profilo
       </button>
     </main>
   );
