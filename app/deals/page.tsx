@@ -17,14 +17,13 @@ export default function DealsPage() {
 
   return (
     <main style={{ padding: 40 }}>
-      <h1>🎮 Giochi Gratis Epic Games</h1>
+      <h1 style={{ marginBottom: 20 }}>🎮 Giochi Gratis Epic Games</h1>
 
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))",
-          gap: 20,
-          marginTop: 20,
+          gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))",
+          gap: 24,
         }}
       >
         {deals.map((deal, i) => (
@@ -33,25 +32,37 @@ export default function DealsPage() {
             href={deal.url}
             target="_blank"
             style={{
-              border: "1px solid #444",
-              borderRadius: 10,
-              padding: 10,
               textDecoration: "none",
               color: "white",
               background: "#111",
+              borderRadius: 14,
+              overflow: "hidden",
+              border: "1px solid #333",
+              transition: "0.2s",
             }}
           >
             <img
               src={deal.image}
               style={{
                 width: "100%",
-                borderRadius: 8,
+                height: 160,
+                objectFit: "cover",
               }}
             />
 
-            <h3 style={{ marginTop: 10 }}>{deal.title}</h3>
+            <div style={{ padding: 14 }}>
+              <h3 style={{ margin: 0 }}>{deal.title}</h3>
 
-            <p style={{ color: "#00ff9c" }}>FREE</p>
+              <div
+                style={{
+                  marginTop: 10,
+                  color: "#00ff9c",
+                  fontWeight: "bold",
+                }}
+              >
+                FREE
+              </div>
+            </div>
           </a>
         ))}
       </div>
