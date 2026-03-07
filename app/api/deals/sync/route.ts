@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { fetchEpicDeals } from "./epic";  // 
 import { fetchSteamDeals } from "./steam"; // 
-import { supabase } from "../../../lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
 
 export const GET = async () => {
   try {
@@ -15,7 +15,7 @@ export const GET = async () => {
     // Aggiungi i deals a Supabase
     const { error } = await supabase
       .from("deals")
-      .upsert(deals, { onConflict: ["id"] });
+      .upsert(deals, { onConflict: "id" });
 
     if (error) {
       throw new Error(error.message);
@@ -26,8 +26,9 @@ export const GET = async () => {
       { status: 200 }
     );
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return new NextResponse(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: errorMessage }),
       { status: 500 }
     );
   }
