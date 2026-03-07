@@ -9,22 +9,29 @@ export default function CreateEventPage() {
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [eventDate, setEventDate] = useState(""); // datetime-local
+  const [eventDate, setEventDate] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(10);
-
-  // nuove info iscrizioni
-  const [registrationsOpenAt, setRegistrationsOpenAt] = useState(""); // datetime-local (opzionale)
+  const [registrationsOpenAt, setRegistrationsOpenAt] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    // richiede login
     const check = async () => {
       const { data } = await supabase.auth.getUser();
-      if (!data?.user) router.replace("/");
+
+      if (data?.user) {
+        setIsLoggedIn(true);
+      } else {
+        setIsLoggedIn(false);
+      }
+
+      setCheckingAuth(false);
     };
+
     check();
-  }, [router]);
+  }, []);
 
   const announceDiscord = async (content: string) => {
     const res = await fetch("/api/discord/announce", {
@@ -34,11 +41,15 @@ export default function CreateEventPage() {
     });
 
     const data = await res.json().catch(() => ({}));
+
     if (!res.ok) {
       console.error("Discord announce error:", data);
-      alert("Errore invio Discord: " + (data?.details ?? data?.error ?? "unknown"));
+      alert(
+        "Errore invio Discord: " + (data?.details ?? data?.error ?? "unknown")
+      );
       return false;
     }
+
     return true;
   };
 
@@ -66,7 +77,6 @@ export default function CreateEventPage() {
       event_date: new Date(eventDate).toISOString(),
       max_players: maxPlayers,
       created_by: user.id,
-
       registrations_open_at: registrationsOpenAt
         ? new Date(registrationsOpenAt).toISOString()
         : null,
@@ -86,10 +96,10 @@ export default function CreateEventPage() {
       return;
     }
 
-    // Annuncio evento creato su Discord
     const openStr = inserted?.registrations_open_at
       ? new Date(inserted.registrations_open_at).toLocaleString()
       : "quando apriamo noi (annuncio in arrivo)";
+
     const startStr = new Date(inserted.event_date).toLocaleString();
 
     const content =
@@ -107,8 +117,70 @@ export default function CreateEventPage() {
     router.push("/events");
   };
 
+  if (checkingAuth) {
+    return (
+      <main style={{ padding: 40, maxWidth: 560 }}>
+        <p>Controllo accesso in corso...</p>
+      </main>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <main style={{ padding: 40, maxWidth: 560 }}>
+        <button
+          onClick={() => router.back()}
+          style={{
+            padding: "8px 14px",
+            borderRadius: 8,
+            border: "1px solid #444",
+            background: "rgba(255,255,255,0.05)",
+            color: "white",
+            cursor: "pointer",
+            marginBottom: 16,
+          }}
+        >
+          ← Indietro
+        </button>
+
+        <h1>Crea evento</h1>
+        <p style={{ marginTop: 12, color: "#b8b8d0" }}>
+          Devi prima effettuare il login con Discord per creare un evento.
+        </p>
+
+        <button
+          onClick={() => router.push("/")}
+          style={{
+            marginTop: 16,
+            padding: "12px 16px",
+            borderRadius: 10,
+            border: "1px solid #444",
+            cursor: "pointer",
+          }}
+        >
+          Torna alla home
+        </button>
+      </main>
+    );
+  }
+
   return (
     <main style={{ padding: 40, maxWidth: 560 }}>
+      <button
+        onClick={() => router.back()}
+        style={{
+          padding: "8px 14px",
+          borderRadius: 8,
+          border: "1px solid #444",
+          background: "rgba(255,255,255,0.05)",
+          color: "white",
+          cursor: "pointer",
+          marginBottom: 16,
+        }}
+      >
+        ← Indietro
+      </button>
+
       <h1>Crea evento</h1>
 
       <label style={{ display: "block", marginTop: 12 }}>Titolo</label>
@@ -116,7 +188,12 @@ export default function CreateEventPage() {
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Es: Ranked Night R6"
-        style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #444" }}
+        style={{
+          width: "100%",
+          padding: 10,
+          borderRadius: 10,
+          border: "1px solid #444",
+        }}
       />
 
       <label style={{ display: "block", marginTop: 12 }}>Descrizione</label>
@@ -138,18 +215,32 @@ export default function CreateEventPage() {
         type="datetime-local"
         value={eventDate}
         onChange={(e) => setEventDate(e.target.value)}
-        style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #444" }}
+        style={{
+          width: "100%",
+          padding: 10,
+          borderRadius: 10,
+          border: "1px solid #444",
+        }}
       />
 
-      <label style={{ display: "block", marginTop: 12 }}>Iscrizioni aprono (opzionale)</label>
+      <label style={{ display: "block", marginTop: 12 }}>
+        Iscrizioni aprono (opzionale)
+      </label>
       <input
         type="datetime-local"
         value={registrationsOpenAt}
         onChange={(e) => setRegistrationsOpenAt(e.target.value)}
-        style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #444" }}
+        style={{
+          width: "100%",
+          padding: 10,
+          borderRadius: 10,
+          border: "1px solid #444",
+        }}
       />
+
       <p style={{ opacity: 0.8, marginTop: 6 }}>
-        Se lo compiliamo, Discord lo mostrerà nell’annuncio. Poi apriremo le iscrizioni con un bottone.
+        Se lo compiliamo, Discord lo mostrerà nell’annuncio. Poi apriremo le
+        iscrizioni con un bottone.
       </p>
 
       <label style={{ display: "block", marginTop: 12 }}>Max giocatori</label>
@@ -159,7 +250,12 @@ export default function CreateEventPage() {
         onChange={(e) => setMaxPlayers(parseInt(e.target.value || "10", 10))}
         min={2}
         max={100}
-        style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #444" }}
+        style={{
+          width: "100%",
+          padding: 10,
+          borderRadius: 10,
+          border: "1px solid #444",
+        }}
       />
 
       <button
