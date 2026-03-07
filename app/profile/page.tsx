@@ -47,6 +47,31 @@ export default function ProfilePage() {
     setLoading(false);
   };
 
+  const loginWithDiscord = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "discord",
+      options: {
+        redirectTo: `${window.location.origin}/profile`,
+      },
+    });
+
+    if (error) {
+      alert("Errore login Discord: " + error.message);
+    }
+  };
+
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      alert("Errore logout: " + error.message);
+      return;
+    }
+
+    router.push("/");
+    router.refresh();
+  };
+
   const saveProfile = async () => {
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
@@ -98,9 +123,26 @@ export default function ProfilePage() {
         </button>
 
         <h1>Profilo</h1>
+
         <p style={{ marginTop: 12, color: "#b8b8d0" }}>
           Devi prima fare login con Discord per vedere e modificare il profilo.
         </p>
+
+        <button
+          onClick={loginWithDiscord}
+          style={{
+            marginTop: 20,
+            padding: "12px 16px",
+            borderRadius: 10,
+            border: "none",
+            background: "#5865f2",
+            color: "white",
+            fontWeight: "700",
+            cursor: "pointer",
+          }}
+        >
+          Login con Discord
+        </button>
       </main>
     );
   }
@@ -124,9 +166,7 @@ export default function ProfilePage() {
 
       <h1>Profilo</h1>
 
-      <label style={{ display: "block", marginTop: 20 }}>
-        Nome Discord
-      </label>
+      <label style={{ display: "block", marginTop: 20 }}>Nome Discord</label>
 
       <input
         value={discordName}
@@ -139,9 +179,7 @@ export default function ProfilePage() {
         }}
       />
 
-      <label style={{ display: "block", marginTop: 20 }}>
-        Nome Ubisoft
-      </label>
+      <label style={{ display: "block", marginTop: 20 }}>Nome Ubisoft</label>
 
       <input
         value={ubisoftName}
@@ -155,18 +193,33 @@ export default function ProfilePage() {
         }}
       />
 
-      <button
-        onClick={saveProfile}
-        style={{
-          marginTop: 20,
-          padding: "12px 16px",
-          borderRadius: 10,
-          border: "1px solid #444",
-          cursor: "pointer",
-        }}
-      >
-        Salva profilo
-      </button>
+      <div style={{ display: "flex", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
+        <button
+          onClick={saveProfile}
+          style={{
+            padding: "12px 16px",
+            borderRadius: 10,
+            border: "1px solid #444",
+            cursor: "pointer",
+          }}
+        >
+          Salva profilo
+        </button>
+
+        <button
+          onClick={logout}
+          style={{
+            padding: "12px 16px",
+            borderRadius: 10,
+            border: "1px solid #444",
+            background: "#2b2b35",
+            color: "white",
+            cursor: "pointer",
+          }}
+        >
+          Logout
+        </button>
+      </div>
     </main>
   );
 }
