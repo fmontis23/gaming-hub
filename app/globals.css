@@ -429,3 +429,52 @@ option {
   text-decoration: none;
   border: 1px solid #2e2e44;
 }
+.home-sections {
+  padding: 40px 20px 80px;
+}
+
+.home-cards {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.home-card {
+  display: block;
+  background: #171726;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 28px;
+  text-decoration: none;
+  color: white;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(88, 101, 242, 0.55);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.home-card-icon {
+  font-size: 2rem;
+  margin-bottom: 14px;
+}
+
+.home-card h2 {
+  font-size: 1.4rem;
+  margin-bottom: 10px;
+}
+
+.home-card p {
+  color: #b8b8d0;
+  line-height: 1.6;
+}
+
+@media (max-width: 900px) {
+  .home-cards {
+    grid-template-columns: 1fr;
+  }
+}
