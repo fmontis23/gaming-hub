@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { fetchEpicDeals } from "../../epic";
-import { fetchSteamDeals } from "../../steam";
-import { supabase } from "../../../lib/supabaseClient";
+import { fetchEpicDeals } from "../../../epic";
+import { fetchSteamDeals } from "../../../steam";
+import { supabase } from "../../../../lib/supabaseClient";
 
 export async function GET() {
   try {
@@ -12,11 +12,11 @@ export async function GET() {
     const allDeals = [...epicDeals, ...steamDeals];
 
     // Ordino le offerte per data di scadenza
-    const sortedDeals = allDeals.sort((a, b) => new Date(a.dealEnds) - new Date(b.dealEnds));
+    const sortedDeals = allDeals.sort((a, b) => new Date(a.dealEnds).getTime() - new Date(b.dealEnds).getTime());
 
     // Salvo tutte le offerte su Supabase
     const { error } = await supabase.from("deals").upsert(sortedDeals, {
-      onConflict: ["id"], // evita duplicati
+      onConflict: "id", // evita duplicati
     });
 
     if (error) {
