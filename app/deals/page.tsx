@@ -1,40 +1,40 @@
+"use client"; // Aggiungi questa linea all'inizio del file
+
 import { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabaseClient";
 
 export default function DealsPage() {
   const [deals, setDeals] = useState<any[]>([]);
 
   useEffect(() => {
+    // Logica per ottenere i deals
     const fetchDeals = async () => {
-      const response = await fetch("/api/deals/sync");
-      const data = await response.json();
-      if (data.success) {
-        setDeals(data.deals);
-      } else {
-        console.error("Errore nel recupero delle offerte");
+      const { data, error } = await supabase.from("deals").select("*");
+      if (error) {
+        console.error("Errore nel recupero delle offerte:", error);
+        return;
       }
+      setDeals(data);
     };
+
     fetchDeals();
   }, []);
 
   return (
     <div>
-      <h1>Offerte & Giochi Gratis</h1>
-      <div className="deals-container">
-        {deals.length > 0 ? (
-          deals.map((deal) => (
-            <div key={deal.id} className="deal">
+      <h1>Offerte Disponibili</h1>
+      {deals.length === 0 ? (
+        <p>Non ci sono offerte al momento.</p>
+      ) : (
+        <ul>
+          {deals.map((deal, index) => (
+            <li key={index}>
               <h2>{deal.title}</h2>
-              <p>{deal.store}</p>
-              <p>Prezzo: {deal.price_new}</p>
-              <a href={deal.url} target="_blank" rel="noopener noreferrer">
-                Vai al gioco
-              </a>
-            </div>
-          ))
-        ) : (
-          <p>Nessuna offerta disponibile al momento.</p>
-        )}
-      </div>
+              <p>{deal.description}</p>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
