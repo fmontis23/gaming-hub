@@ -31,6 +31,7 @@ export default function EventsPage() {
   const [counts, setCounts] = useState<RegistrationCountMap>({});
   const [registered, setRegistered] = useState<RegisteredMap>({});
   const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [leavingId, setLeavingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadAll();
@@ -126,6 +127,31 @@ export default function EventsPage() {
     }
 
     alert("Iscrizione completata ✅");
+    loadAll();
+  };
+
+  const leaveEvent = async (eventId: string) => {
+    if (!userId) {
+      alert("Devi prima fare login con Discord.");
+      return;
+    }
+
+    setLeavingId(eventId);
+
+    const { error } = await supabase
+      .from("event_registrations")
+      .delete()
+      .eq("event_id", eventId)
+      .eq("user_id", userId);
+
+    setLeavingId(null);
+
+    if (error) {
+      alert("Errore disiscrizione: " + error.message);
+      return;
+    }
+
+    alert("Disiscrizione completata");
     loadAll();
   };
 
@@ -286,19 +312,36 @@ export default function EventsPage() {
                     Iscrizioni non ancora aperte
                   </div>
                 ) : isRegistered ? (
-                  <div
-                    style={{
-                      marginTop: 12,
-                      width: "100%",
-                      padding: "10px",
-                      borderRadius: 10,
-                      background: "#14532d",
-                      color: "#bbf7d0",
-                      textAlign: "center",
-                      fontWeight: 700,
-                    }}
-                  >
-                    Sei iscritto ✅
+                  <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                    <div
+                      style={{
+                        width: "100%",
+                        padding: "10px",
+                        borderRadius: 10,
+                        background: "#14532d",
+                        color: "#bbf7d0",
+                        textAlign: "center",
+                        fontWeight: 700,
+                      }}
+                    >
+                      Sei iscritto ✅
+                    </div>
+
+                    <button
+                      onClick={() => leaveEvent(event.id)}
+                      disabled={leavingId === event.id}
+                      style={{
+                        width: "100%",
+                        padding: "10px",
+                        borderRadius: 10,
+                        border: "1px solid #444",
+                        background: "#2b2b35",
+                        color: "white",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {leavingId === event.id ? "Disiscrizione..." : "Disiscriviti"}
+                    </button>
                   </div>
                 ) : isFull ? (
                   <div
