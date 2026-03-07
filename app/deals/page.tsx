@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import BackButton from "../components/BackButton";
+import { useRouter } from "next/navigation";
 
 type Deal = {
   title: string;
@@ -11,6 +11,7 @@ type Deal = {
 
 export default function DealsPage() {
   const [deals, setDeals] = useState<Deal[]>([]);
+  const router = useRouter();
 
   useEffect(() => {
     const loadDeals = async () => {
@@ -34,7 +35,20 @@ export default function DealsPage() {
 
   return (
     <main style={{ padding: 40 }}>
-      <BackButton />
+      <button
+        onClick={() => router.back()}
+        style={{
+          padding: "8px 14px",
+          borderRadius: 8,
+          border: "1px solid #444",
+          background: "rgba(255,255,255,0.05)",
+          color: "white",
+          cursor: "pointer",
+          marginBottom: 16,
+        }}
+      >
+        ← Indietro
+      </button>
 
       <h1 style={{ marginBottom: 20 }}>🎮 Giochi Gratis Epic Games</h1>
 
