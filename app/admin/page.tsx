@@ -26,6 +26,7 @@ type ProfileItem = {
   id: string;
   email: string | null;
   display_name: string | null;
+  ubisoft_name: string | null;
 };
 
 export default function AdminDashboard() {
@@ -123,7 +124,7 @@ export default function AdminDashboard() {
 
     const { data: profilesData, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, email, display_name")
+      .select("id, email, display_name, ubisoft_name")
       .in("id", uniqueUserIds);
 
     if (profilesError) {
@@ -371,7 +372,11 @@ export default function AdminDashboard() {
                               </div>
 
                               <div style={{ opacity: 0.75, marginTop: 4 }}>
-                                {profile?.email || registration.user_id}
+                                Email: {profile?.email || registration.user_id}
+                              </div>
+
+                              <div style={{ opacity: 0.75, marginTop: 4 }}>
+                                Ubisoft: {profile?.ubisoft_name || "Non impostato"}
                               </div>
 
                               <div style={{ opacity: 0.75, marginTop: 4 }}>
