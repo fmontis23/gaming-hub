@@ -1,8 +1,30 @@
 import { NextResponse } from "next/server";
 
+function getBestImage(images: any[] = []) {
+  const preferred =
+    images.find((img) => img.type === "OfferImageWide") ||
+    images.find((img) => img.type === "DieselStoreFrontWide") ||
+    images.find((img) => img.type === "Thumbnail") ||
+    images[0];
+
+  return preferred?.url ?? null;
+}
+
+function getGameUrl(game: any) {
+  if (game?.productSlug) {
+    return `https://store.epicgames.com/en-US/p/${game.productSlug}`;
+  }
+
+  const mapping = game?.catalogNs?.mappings?.[0]?.pageSlug;
+  if (mapping) {
+    return `https://store.epicgames.com/en-US/p/${mapping}`;
+  }
+
+  return "https://store.epicgames.com/en-US/free-games";
+}
+
 export async function GET() {
   try {
-
     const epicRes = await fetch(
       "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=en-US&country=IT&allowCountries=IT",
       {
@@ -22,9 +44,7 @@ export async function GET() {
     }
 
     const epicData = await epicRes.json();
-
-    const elements =
-      epicData?.data?.Catalog?.searchStore?.elements ?? [];
+    const elements = epicData?.data?.Catalog?.searchStore?.elements ?? [];
 
     const deals = elements
       .filter((game: any) => {
@@ -32,20 +52,22 @@ export async function GET() {
         return promo.length > 0;
       })
       .map((game: any) => {
-        const offer =
-          game.promotions.promotionalOffers[0].promotionalOffers[0];
+        const offer = game.promotions.promotionalOffers?.[0]?.promotionalOffers?.[0];
+
+        const originalPrice =
+          Number(game?.price?.totalPrice?.originalPrice ?? 0) / 100;
 
         return {
           title: game.title,
           store: "Epic",
           deal_type: "free",
-          price_old: game.price.totalPrice.originalPrice / 100,
+          price_old: originalPrice,
           price_new: 0,
-          currency: game.price.totalPrice.currencyCode,
-          url: `https://store.epicgames.com/en-US/p/${game.productSlug}`,
-          image_url: game.keyImages?.[0]?.url ?? null,
-          starts_at: offer.startDate,
-          ends_at: offer.endDate,
+          currency: game?.price?.totalPrice?.currencyCode ?? "EUR",
+          url: getGameUrl(game),
+          image_url: getBestImage(game?.keyImages ?? []),
+          starts_at: offer?.startDate ?? null,
+          ends_at: offer?.endDate ?? null,
         };
       });
 
@@ -59,19 +81,14 @@ export async function GET() {
       });
     }
 
-    // cancella vecchi epic deals
-    await fetch(
-      `${supabaseUrl}/rest/v1/deals?store=eq.Epic`,
-      {
-        method: "DELETE",
-        headers: {
-          apikey: serviceRoleKey,
-          Authorization: `Bearer ${serviceRoleKey}`,
-        },
-      }
-    );
+    await fetch(`${supabaseUrl}/rest/v1/deals?store=eq.Epic`, {
+      method: "DELETE",
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+      },
+    });
 
-    // inserisce nuovi deals
     const insertRes = await fetch(`${supabaseUrl}/rest/v1/deals`, {
       method: "POST",
       headers: {
@@ -94,7 +111,6 @@ export async function GET() {
       success: true,
       imported: deals.length,
     });
-
   } catch (err: any) {
     return NextResponse.json({
       success: false,
