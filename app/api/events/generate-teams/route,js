@@ -87,9 +87,9 @@ export async function POST(req) {
       );
     }
 
-    if (!registrations || registrations.length < 2) {
+    if (!registrations || registrations.length < 1) {
       return NextResponse.json(
-        { error: "Servono almeno 2 iscritti per generare le squadre." },
+        { error: "Serve almeno 1 iscritto per generare le squadre." },
         { status: 400 }
       );
     }
@@ -155,20 +155,25 @@ export async function POST(req) {
       })),
     ];
 
-    const { error: membersError } = await supabase
-      .from("event_team_members")
-      .insert(membersToInsert);
+    if (membersToInsert.length > 0) {
+      const { error: membersError } = await supabase
+        .from("event_team_members")
+        .insert(membersToInsert);
 
-    if (membersError) {
-      return NextResponse.json(
-        { error: membersError.message },
-        { status: 500 }
-      );
+      if (membersError) {
+        return NextResponse.json(
+          { error: membersError.message },
+          { status: 500 }
+        );
+      }
     }
 
     return NextResponse.json({
       success: true,
-      message: "Squadre generate con successo.",
+      message:
+        registrations.length === 1
+          ? "Modalità test: squadra generata con 1 solo iscritto."
+          : "Squadre generate con successo.",
     });
   } catch (error) {
     return NextResponse.json(
