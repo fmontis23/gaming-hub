@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import BackButton from "../components/BackButton";
 
 export default function DealsPage() {
   const [deals, setDeals] = useState<any[]>([]);
@@ -17,6 +18,9 @@ export default function DealsPage() {
 
   return (
     <main style={{ padding: 40 }}>
+
+      <BackButton />
+
       <h1 style={{ marginBottom: 20 }}>🎮 Giochi Gratis Epic Games</h1>
 
       <div
