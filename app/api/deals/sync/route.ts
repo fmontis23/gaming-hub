@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { fetchEpicDeals } from "../sync/epic";
-import { fetchSteamDeals } from "../sync/steam";
-import { supabase } from "../../../lib/supabaseClient";
+import { fetchEpicDeals } from "./epic";  // Questo deve essere presente nella stessa cartella "sync"
+import { fetchSteamDeals } from "./steam";  // Questo deve essere presente nella stessa cartella "sync"
+import { supabase } from "@/lib/supabaseClient";
 
 export async function GET() {
   try {
@@ -12,7 +12,7 @@ export async function GET() {
     const allDeals = [...epicDeals, ...steamDeals];
 
     // Aggiorna nel database
-    const { error } = await supabase.from("deals").upsert(allDeals, { onConflict: ["deal_id"] });
+    const { error } = await supabase.from("deals").upsert(allDeals, { onConflict: "deal_id" });
     if (error) {
       console.error("Errore durante l'upsert dei deals:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -21,6 +21,7 @@ export async function GET() {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Errore durante il recupero dei deals:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
