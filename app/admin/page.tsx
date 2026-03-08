@@ -54,6 +54,7 @@ export default function AdminDashboard() {
   const [teamMembers, setTeamMembers] = useState<TeamMemberItem[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [generatingForEvent, setGeneratingForEvent] = useState<string | null>(null);
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -212,10 +213,10 @@ export default function AdminDashboard() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        content:
-          `🟢 **Iscrizioni aperte!**\n` +
-          `🎮 **${eventTitle}**\n` +
-          `➡️ Vai agli eventi: https://gaming-hub-lime.vercel.app/events`,
+        title: "🟢 Iscrizioni aperte!",
+        description: `🎮 **${eventTitle}**`,
+        url: "/events",
+        mention: "@everyone",
       }),
     });
 
@@ -300,16 +301,55 @@ export default function AdminDashboard() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        content:
-          `⚔️ **Squadre generate!**\n` +
-          `🎮 **${eventTitle}**\n` +
-          `👥 Team creati: **${insertedTeams.length}**\n` +
-          `➡️ Vai agli eventi: https://gaming-hub-lime.vercel.app/events`,
+        title: "⚔️ Squadre generate!",
+        description:
+          `🎮 **${eventTitle}**\n👥 Team creati: **${insertedTeams.length}**`,
+        url: "/events",
       }),
     });
 
     alert("Squadre generate ✅");
     loadData();
+  };
+
+  const deleteEvent = async (eventId: string, eventTitle: string) => {
+    const confirmed = window.confirm(
+      `Sei sicuro di voler eliminare l'evento "${eventTitle}"?\n\nVerranno rimossi anche iscrizioni e squadre.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setDeletingEventId(eventId);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const res = await fetch("/api/events/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+        },
+        body: JSON.stringify({ eventId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Errore durante l'eliminazione evento");
+        return;
+      }
+
+      alert(data.message || "Evento eliminato con successo ✅");
+      await loadData();
+    } catch (error) {
+      console.error("Errore eliminazione evento:", error);
+      alert("Errore durante l'eliminazione evento");
+    } finally {
+      setDeletingEventId(null);
+    }
   };
 
   const sendTestDiscordMessage = async () => {
@@ -322,7 +362,7 @@ export default function AdminDashboard() {
         title: "🚨 Evento di Test",
         description:
           "Le iscrizioni per il torneo **Rainbow Six Siege 5v5** sono aperte!\n\n📅 Oggi alle 21:00\n👥 10 posti disponibili\n\nIscriviti subito!",
-        url: "https://gaming-hub-lime.vercel.app/events",
+        url: "/events",
       }),
     });
 
@@ -493,6 +533,16 @@ export default function AdminDashboard() {
                         ? "Generazione..."
                         : "Genera squadre"}
                     </button>
+
+                    <button
+                      onClick={() => deleteEvent(event.id, event.title)}
+                      disabled={deletingEventId === event.id}
+                      style={deleteButtonStyle}
+                    >
+                      {deletingEventId === event.id
+                        ? "Eliminazione..."
+                        : "Elimina evento"}
+                    </button>
                   </div>
 
                   <div style={{ marginTop: 16 }}>
@@ -611,6 +661,15 @@ const smallButtonStyle: React.CSSProperties = {
   padding: "10px 14px",
   borderRadius: 10,
   border: "1px solid #444",
+  cursor: "pointer",
+};
+
+const deleteButtonStyle: React.CSSProperties = {
+  padding: "10px 14px",
+  borderRadius: 10,
+  border: "1px solid #7f1d1d",
+  background: "#991b1b",
+  color: "white",
   cursor: "pointer",
 };
 

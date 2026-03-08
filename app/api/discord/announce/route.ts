@@ -1,26 +1,35 @@
 import { NextResponse } from "next/server";
 
-function toAbsoluteUrl(url?: string) {
+function getBaseUrl(req: Request) {
+  const envUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.SITE_URL ||
+    "";
+
+  if (envUrl) {
+    return envUrl.endsWith("/") ? envUrl.slice(0, -1) : envUrl;
+  }
+
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
+  const proto = req.headers.get("x-forwarded-proto") || "https";
+
+  if (!host) return "";
+
+  return `${proto}://${host}`;
+}
+
+function toAbsoluteUrl(req: Request, url?: string) {
   if (!url) return "";
 
   if (url.startsWith("http://") || url.startsWith("https://")) {
     return url;
   }
 
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.SITE_URL ||
-    "";
-
-  if (!siteUrl) return url;
-
-  const normalizedBase = siteUrl.endsWith("/")
-    ? siteUrl.slice(0, -1)
-    : siteUrl;
+  const baseUrl = getBaseUrl(req);
+  if (!baseUrl) return url;
 
   const normalizedPath = url.startsWith("/") ? url : `/${url}`;
-
-  return `${normalizedBase}${normalizedPath}`;
+  return `${baseUrl}${normalizedPath}`;
 }
 
 export async function POST(req: Request) {
@@ -41,7 +50,7 @@ export async function POST(req: Request) {
     const rawUrl = body?.url ?? "";
     const mention = body?.mention ?? "@everyone";
 
-    const absoluteUrl = toAbsoluteUrl(rawUrl);
+    const absoluteUrl = toAbsoluteUrl(req, rawUrl);
 
     const allowedMentions =
       mention === "@everyone"
