@@ -1,35 +1,54 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Deal = {
+  id?: string;
   title: string;
   image: string;
   url: string;
+  price?: string;
+  store?: string;
+  platform?: string;
+  discount_percent?: number;
 };
 
 export default function Home() {
   const [deals, setDeals] = useState<Deal[]>([]);
+  const [loadingDeals, setLoadingDeals] = useState(true);
 
   useEffect(() => {
     const loadDeals = async () => {
       try {
-        const res = await fetch("/api/deals/sync");
+        setLoadingDeals(true);
 
-        if (!res.ok) {
-          throw new Error("Errore nel caricamento deals");
-        }
+        const [epicRes, steamRes] = await Promise.all([
+          fetch("/api/deals/sync"),
+          fetch("/api/deals/steam"),
+        ]);
 
-        const data = await res.json();
-        setDeals((data.deals || []).slice(0, 6));
+        const epicData = await epicRes.json().catch(() => ({ deals: [] }));
+        const steamData = await steamRes.json().catch(() => ({ deals: [] }));
+
+        const epicDeals = Array.isArray(epicData.deals) ? epicData.deals : [];
+        const steamDeals = Array.isArray(steamData.deals) ? steamData.deals : [];
+
+        const mergedDeals = [...epicDeals, ...steamDeals].slice(0, 8);
+        setDeals(mergedDeals);
       } catch (error) {
         console.error("Errore home deals:", error);
         setDeals([]);
+      } finally {
+        setLoadingDeals(false);
       }
     };
 
     loadDeals();
   }, []);
+
+  const featuredDeals = useMemo(() => {
+    return deals.slice(0, 6);
+  }, [deals]);
 
   return (
     <main
@@ -423,13 +442,13 @@ export default function Home() {
                   fontSize: 13,
                 }}
               >
-                FREE GAMES
+                DEALS PREVIEW
               </div>
 
-              <h2 style={{ margin: 0, fontSize: 30 }}>🔥 Giochi Gratis Epic</h2>
+              <h2 style={{ margin: 0, fontSize: 30 }}>🔥 Epic + Steam in evidenza</h2>
 
               <p style={{ color: "#b8b8d0", marginTop: 10, marginBottom: 0 }}>
-                Preview rapida delle offerte disponibili.
+                Una preview rapida dei giochi gratis e delle migliori offerte.
               </p>
             </div>
 
@@ -449,7 +468,20 @@ export default function Home() {
             </a>
           </div>
 
-          {deals.length === 0 ? (
+          {loadingDeals ? (
+            <div
+              style={{
+                padding: 24,
+                borderRadius: 16,
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                textAlign: "center",
+                color: "#b8b8d0",
+              }}
+            >
+              Caricamento deals...
+            </div>
+          ) : featuredDeals.length === 0 ? (
             <div
               style={{
                 padding: 24,
@@ -470,70 +502,117 @@ export default function Home() {
                 gap: 18,
               }}
             >
-              {deals.map((deal, index) => (
-                <a
-                  key={index}
-                  href={deal.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    textDecoration: "none",
-                    color: "white",
-                    borderRadius: 18,
-                    overflow: "hidden",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    background: "rgba(255,255,255,0.03)",
-                    display: "block",
-                  }}
-                >
-                  <div
+              {featuredDeals.map((deal, index) => {
+                const isEpic = deal.platform === "Epic" || deal.store === "Epic Games";
+                const isSteam = deal.platform === "Steam" || deal.store === "Steam";
+
+                return (
+                  <a
+                    key={deal.id || index}
+                    href={deal.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     style={{
-                      width: "100%",
-                      height: 160,
-                      background: "#111827",
+                      textDecoration: "none",
+                      color: "white",
+                      borderRadius: 18,
                       overflow: "hidden",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "rgba(255,255,255,0.03)",
+                      display: "block",
                     }}
                   >
-                    <img
-                      src={deal.image}
-                      alt={deal.title}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        display: "block",
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ padding: 16 }}>
                     <div
                       style={{
-                        display: "inline-block",
-                        padding: "5px 10px",
-                        borderRadius: 999,
-                        background: "rgba(34,197,94,0.14)",
-                        color: "#86efac",
-                        fontWeight: 800,
-                        fontSize: 12,
-                        marginBottom: 10,
+                        width: "100%",
+                        height: 160,
+                        background: "#111827",
+                        overflow: "hidden",
                       }}
                     >
-                      FREE
+                      <img
+                        src={deal.image}
+                        alt={deal.title}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          display: "block",
+                        }}
+                      />
                     </div>
 
-                    <h3
-                      style={{
-                        margin: 0,
-                        fontSize: 18,
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      {deal.title}
-                    </h3>
-                  </div>
-                </a>
-              ))}
+                    <div style={{ padding: 16 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          flexWrap: "wrap",
+                          marginBottom: 10,
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "5px 10px",
+                            borderRadius: 999,
+                            background: isEpic
+                              ? "rgba(34,197,94,0.14)"
+                              : "rgba(88,101,242,0.14)",
+                            color: isEpic ? "#86efac" : "#c7d2fe",
+                            fontWeight: 800,
+                            fontSize: 12,
+                          }}
+                        >
+                          {deal.store || (isEpic ? "Epic Games" : isSteam ? "Steam" : "Deal")}
+                        </span>
+
+                        {deal.price && (
+                          <span
+                            style={{
+                              display: "inline-block",
+                              padding: "5px 10px",
+                              borderRadius: 999,
+                              background: "rgba(255,255,255,0.07)",
+                              color: "white",
+                              fontWeight: 800,
+                              fontSize: 12,
+                            }}
+                          >
+                            {deal.price}
+                          </span>
+                        )}
+
+                        {!!deal.discount_percent && (
+                          <span
+                            style={{
+                              display: "inline-block",
+                              padding: "5px 10px",
+                              borderRadius: 999,
+                              background: "rgba(239,68,68,0.14)",
+                              color: "#fca5a5",
+                              fontWeight: 800,
+                              fontSize: 12,
+                            }}
+                          >
+                            -{deal.discount_percent}%
+                          </span>
+                        )}
+                      </div>
+
+                      <h3
+                        style={{
+                          margin: 0,
+                          fontSize: 18,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {deal.title}
+                      </h3>
+                    </div>
+                  </a>
+                );
+              })}
             </div>
           )}
         </div>
