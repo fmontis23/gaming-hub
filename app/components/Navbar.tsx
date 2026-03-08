@@ -1,13 +1,44 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabaseClient";
 
 export default function Navbar() {
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("admins")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Errore controllo admin navbar:", error.message);
+        setIsAdmin(false);
+        return;
+      }
+
+      setIsAdmin(!!data);
+    };
+
+    checkAdmin();
+  }, []);
+
   return (
     <header className="site-header">
       <div className="site-header-inner">
-
-        {/* BRAND */}
         <div className="site-brand">
           <Link href="/" className="brand-link">
             <span className="brand-icon">🎮</span>
@@ -15,17 +46,15 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* NAVIGATION */}
         <nav className="site-nav">
           <Link href="/">Home</Link>
           <Link href="/events">Eventi</Link>
           <Link href="/deals">Deals</Link>
           <Link href="/community">Community</Link>
+          {isAdmin && <Link href="/admin">Moderatore</Link>}
         </nav>
 
-        {/* ACTIONS */}
         <div className="site-actions">
-
           <a
             href="https://discord.gg/4NrqDfgP"
             target="_blank"
@@ -38,9 +67,7 @@ export default function Navbar() {
           <Link href="/profile" className="profile-button">
             Profilo
           </Link>
-
         </div>
-
       </div>
     </header>
   );
