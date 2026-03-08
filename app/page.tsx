@@ -28,6 +28,7 @@ export default function Home() {
 
   const [nextEvent, setNextEvent] = useState<NextEvent | null>(null);
   const [loadingEvent, setLoadingEvent] = useState(true);
+  const [countdown, setCountdown] = useState("");
 
   useEffect(() => {
     const loadDeals = async () => {
@@ -95,6 +96,42 @@ export default function Home() {
       dateStyle: "medium",
       timeStyle: "short",
     });
+  }, [nextEvent]);
+
+  const getCountdown = (date: string) => {
+    const now = new Date().getTime();
+    const eventTime = new Date(date).getTime();
+
+    if (Number.isNaN(eventTime)) return "Data non valida";
+    if (now >= eventTime) return "Evento iniziato";
+
+    const diff = eventTime - now;
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const minutes = Math.floor((diff / (1000 * 60)) % 60);
+    const seconds = Math.floor((diff / 1000) % 60);
+
+    if (days > 0) {
+      return `${days}g ${hours}h ${minutes}m ${seconds}s`;
+    }
+
+    return `${hours}h ${minutes}m ${seconds}s`;
+  };
+
+  useEffect(() => {
+    if (!nextEvent?.event_date) {
+      setCountdown("");
+      return;
+    }
+
+    setCountdown(getCountdown(nextEvent.event_date));
+
+    const interval = setInterval(() => {
+      setCountdown(getCountdown(nextEvent.event_date));
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, [nextEvent]);
 
   return (
@@ -455,13 +492,45 @@ export default function Home() {
                   color: "#b8b8d0",
                   lineHeight: 1.7,
                   marginTop: 0,
-                  marginBottom: 18,
+                  marginBottom: 14,
                   maxWidth: 760,
                 }}
               >
                 {nextEvent.description ||
                   "Dettagli evento disponibili nella sezione eventi."}
               </p>
+
+              <div
+                style={{
+                  marginBottom: 18,
+                  padding: "12px 14px",
+                  borderRadius: 14,
+                  background: "rgba(34,197,94,0.10)",
+                  border: "1px solid rgba(34,197,94,0.18)",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 800,
+                    color: "#86efac",
+                    marginBottom: 6,
+                    letterSpacing: 0.4,
+                  }}
+                >
+                  COUNTDOWN EVENTO
+                </div>
+
+                <div
+                  style={{
+                    fontWeight: 800,
+                    fontSize: 20,
+                    color: "white",
+                  }}
+                >
+                  ⏳ Inizia tra: {countdown}
+                </div>
+              </div>
 
               <div
                 style={{
