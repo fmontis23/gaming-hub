@@ -12,6 +12,9 @@ type Deal = {
   platform: string;
   start_date: string | null;
   end_date: string | null;
+  original_price?: string | null;
+  discount_percent?: number;
+  is_free?: boolean;
 };
 
 type CountdownMap = {
@@ -47,17 +50,18 @@ export default function DealsPage() {
     try {
       setLoading(true);
 
-      const res = await fetch("/api/deals/sync", {
-        cache: "no-store",
-      });
+      const [epicRes, steamRes] = await Promise.all([
+        fetch("/api/deals/sync", { cache: "no-store" }),
+        fetch("/api/deals/steam", { cache: "no-store" }),
+      ]);
 
-      const data = await res.json();
+      const epicData = await epicRes.json().catch(() => ({ deals: [] }));
+      const steamData = await steamRes.json().catch(() => ({ deals: [] }));
 
-      if (!res.ok) {
-        throw new Error("Errore nel caricamento deals");
-      }
+      const epicDeals = Array.isArray(epicData.deals) ? epicData.deals : [];
+      const steamDeals = Array.isArray(steamData.deals) ? steamData.deals : [];
 
-      setDeals(Array.isArray(data.deals) ? data.deals : []);
+      setDeals([...epicDeals, ...steamDeals]);
     } catch (error) {
       console.error("Errore pagina deals:", error);
       setDeals([]);
@@ -79,9 +83,15 @@ export default function DealsPage() {
     }
 
     result.sort((a, b) => {
-      const aTime = a.end_date ? new Date(a.end_date).getTime() : Infinity;
-      const bTime = b.end_date ? new Date(b.end_date).getTime() : Infinity;
-      return aTime - bTime;
+      const aEpic = a.end_date ? new Date(a.end_date).getTime() : Infinity;
+      const bEpic = b.end_date ? new Date(b.end_date).getTime() : Infinity;
+
+      if (aEpic !== bEpic) return aEpic - bEpic;
+
+      const aDiscount = a.discount_percent || 0;
+      const bDiscount = b.discount_percent || 0;
+
+      return bDiscount - aDiscount;
     });
 
     return result;
@@ -100,12 +110,12 @@ export default function DealsPage() {
   };
 
   const getCountdownLabel = (endDate: string | null) => {
-    if (!endDate) return "Scadenza non disponibile";
+    if (!endDate) return "Nessuna scadenza";
 
     const now = new Date().getTime();
     const end = new Date(endDate).getTime();
 
-    if (Number.isNaN(end)) return "Scadenza non disponibile";
+    if (Number.isNaN(end)) return "Nessuna scadenza";
     if (now >= end) return "Offerta terminata";
 
     const diff = end - now;
@@ -156,13 +166,13 @@ export default function DealsPage() {
             fontSize: 13,
           }}
         >
-          FREE GAMES
+          DEALS HUB
         </div>
 
         <h1 style={{ margin: 0, fontSize: 42 }}>🔥 Deals Gaming</h1>
 
         <p style={{ color: "#c7c9e0", marginTop: 10, marginBottom: 0 }}>
-          Cerca offerte, filtra per piattaforma e controlla il countdown live.
+          Cerca offerte, filtra per piattaforma e controlla giochi gratis e sconti.
         </p>
       </section>
 
@@ -249,7 +259,10 @@ export default function DealsPage() {
             {filteredDeals.map((deal) => {
               const countdown =
                 countdowns[deal.id] || getCountdownLabel(deal.end_date);
+
               const expired = countdown === "Offerta terminata";
+              const isEpic = deal.platform === "Epic";
+              const isSteam = deal.platform === "Steam";
 
               return (
                 <div
@@ -334,6 +347,22 @@ export default function DealsPage() {
                       >
                         {deal.price}
                       </span>
+
+                      {isSteam && !!deal.discount_percent && (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "5px 10px",
+                            borderRadius: 999,
+                            background: "rgba(239,68,68,0.14)",
+                            color: "#fca5a5",
+                            fontSize: 12,
+                            fontWeight: 700,
+                          }}
+                        >
+                          -{deal.discount_percent}%
+                        </span>
+                      )}
                     </div>
 
                     <h3
@@ -355,16 +384,31 @@ export default function DealsPage() {
                         marginBottom: 16,
                       }}
                     >
-                      <div>
-                        ⏳ <strong>Countdown:</strong>{" "}
-                        <span style={{ color: expired ? "#fca5a5" : "#86efac" }}>
-                          {countdown}
-                        </span>
-                      </div>
+                      {isEpic ? (
+                        <>
+                          <div>
+                            ⏳ <strong>Countdown:</strong>{" "}
+                            <span style={{ color: expired ? "#fca5a5" : "#86efac" }}>
+                              {countdown}
+                            </span>
+                          </div>
 
-                      <div>
-                        📅 <strong>Scade:</strong> {formatDate(deal.end_date)}
-                      </div>
+                          <div>
+                            📅 <strong>Scade:</strong> {formatDate(deal.end_date)}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            💸 <strong>Prezzo:</strong> {deal.price}
+                          </div>
+
+                          <div>
+                            🏷️ <strong>Prezzo originale:</strong>{" "}
+                            {deal.original_price || "Non disponibile"}
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     <a
@@ -378,16 +422,17 @@ export default function DealsPage() {
                         padding: "12px 14px",
                         borderRadius: 12,
                         textDecoration: "none",
-                        background: expired
-                          ? "#3f3f46"
-                          : "linear-gradient(90deg, #5865f2, #7c3aed)",
+                        background:
+                          isEpic && expired
+                            ? "#3f3f46"
+                            : "linear-gradient(90deg, #5865f2, #7c3aed)",
                         color: "white",
                         fontWeight: 800,
-                        pointerEvents: expired ? "none" : "auto",
-                        opacity: expired ? 0.7 : 1,
+                        pointerEvents: isEpic && expired ? "none" : "auto",
+                        opacity: isEpic && expired ? 0.7 : 1,
                       }}
                     >
-                      {expired ? "Offerta scaduta" : "Apri deal"}
+                      {isEpic && expired ? "Offerta scaduta" : "Apri deal"}
                     </a>
                   </div>
                 </div>
