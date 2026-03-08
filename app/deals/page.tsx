@@ -3,140 +3,101 @@
 import { useEffect, useMemo, useState } from "react";
 
 type Deal = {
-  id: string;
+  id?: string;
   title: string;
   image: string;
   url: string;
-  price: string;
-  store: string;
-  platform: string;
-  start_date: string | null;
-  end_date: string | null;
-  original_price?: string | null;
+  price?: string;
+  store?: string;
+  platform?: string;
   discount_percent?: number;
-  is_free?: boolean;
 };
 
-type CountdownMap = {
-  [dealId: string]: string;
+type NextEvent = {
+  id: string;
+  title: string;
+  description?: string;
+  event_date: string;
+  registrations_open?: boolean;
 };
 
-export default function DealsPage() {
+export default function Home() {
   const [deals, setDeals] = useState<Deal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [platform, setPlatform] = useState("Tutte");
-  const [countdowns, setCountdowns] = useState<CountdownMap>({});
+  const [loadingDeals, setLoadingDeals] = useState(true);
+
+  const [nextEvent, setNextEvent] = useState<NextEvent | null>(null);
+  const [loadingEvent, setLoadingEvent] = useState(true);
 
   useEffect(() => {
-    loadDeals();
+    const loadDeals = async () => {
+      try {
+        setLoadingDeals(true);
+
+        const [epicRes, steamRes] = await Promise.all([
+          fetch("/api/deals/sync"),
+          fetch("/api/deals/steam"),
+        ]);
+
+        const epicData = await epicRes.json().catch(() => ({ deals: [] }));
+        const steamData = await steamRes.json().catch(() => ({ deals: [] }));
+
+        const epicDeals = Array.isArray(epicData.deals) ? epicData.deals : [];
+        const steamDeals = Array.isArray(steamData.deals) ? steamData.deals : [];
+
+        const mergedDeals = [...epicDeals, ...steamDeals].slice(0, 8);
+        setDeals(mergedDeals);
+      } catch (error) {
+        console.error("Errore home deals:", error);
+        setDeals([]);
+      } finally {
+        setLoadingDeals(false);
+      }
+    };
+
+    const loadNextEvent = async () => {
+      try {
+        setLoadingEvent(true);
+
+        const res = await fetch("/api/events/next");
+        const data = await res.json().catch(() => ({ event: null }));
+
+        if (!res.ok) {
+          throw new Error(data?.error || "Errore nel caricamento del prossimo evento");
+        }
+
+        setNextEvent(data.event || null);
+      } catch (error) {
+        console.error("Errore home next event:", error);
+        setNextEvent(null);
+      } finally {
+        setLoadingEvent(false);
+      }
+    };
+
+    const loadData = async () => {
+      await Promise.all([loadDeals(), loadNextEvent()]);
+    };
+
+    loadData();
   }, []);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const next: CountdownMap = {};
-
-      for (const deal of deals) {
-        next[deal.id] = getCountdownLabel(deal.end_date);
-      }
-
-      setCountdowns(next);
-    }, 1000);
-
-    return () => clearInterval(interval);
+  const featuredDeals = useMemo(() => {
+    return deals.slice(0, 6);
   }, [deals]);
 
-  const loadDeals = async () => {
-    try {
-      setLoading(true);
+  const formattedEventDate = useMemo(() => {
+    if (!nextEvent?.event_date) return "";
 
-      const [epicRes, steamRes] = await Promise.all([
-        fetch("/api/deals/sync", { cache: "no-store" }),
-        fetch("/api/deals/steam", { cache: "no-store" }),
-      ]);
-
-      const epicData = await epicRes.json().catch(() => ({ deals: [] }));
-      const steamData = await steamRes.json().catch(() => ({ deals: [] }));
-
-      const epicDeals = Array.isArray(epicData.deals) ? epicData.deals : [];
-      const steamDeals = Array.isArray(steamData.deals) ? steamData.deals : [];
-
-      setDeals([...epicDeals, ...steamDeals]);
-    } catch (error) {
-      console.error("Errore pagina deals:", error);
-      setDeals([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredDeals = useMemo(() => {
-    let result = [...deals];
-
-    if (platform !== "Tutte") {
-      result = result.filter((deal) => deal.platform === platform);
-    }
-
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter((deal) => deal.title.toLowerCase().includes(q));
-    }
-
-    result.sort((a, b) => {
-      const aEpic = a.end_date ? new Date(a.end_date).getTime() : Infinity;
-      const bEpic = b.end_date ? new Date(b.end_date).getTime() : Infinity;
-
-      if (aEpic !== bEpic) return aEpic - bEpic;
-
-      const aDiscount = a.discount_percent || 0;
-      const bDiscount = b.discount_percent || 0;
-
-      return bDiscount - aDiscount;
+    return new Date(nextEvent.event_date).toLocaleString("it-IT", {
+      dateStyle: "medium",
+      timeStyle: "short",
     });
-
-    return result;
-  }, [deals, search, platform]);
-
-  const formatDate = (date: string | null) => {
-    if (!date) return "Non disponibile";
-
-    return new Date(date).toLocaleString("it-IT", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const getCountdownLabel = (endDate: string | null) => {
-    if (!endDate) return "Nessuna scadenza";
-
-    const now = new Date().getTime();
-    const end = new Date(endDate).getTime();
-
-    if (Number.isNaN(end)) return "Nessuna scadenza";
-    if (now >= end) return "Offerta terminata";
-
-    const diff = end - now;
-
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-    const minutes = Math.floor((diff / (1000 * 60)) % 60);
-    const seconds = Math.floor((diff / 1000) % 60);
-
-    if (days > 0) {
-      return `${days}g ${hours}h ${minutes}m ${seconds}s`;
-    }
-
-    return `${hours}h ${minutes}m ${seconds}s`;
-  };
+  }, [nextEvent]);
 
   return (
     <main
       style={{
         minHeight: "100vh",
-        padding: "40px",
         background:
           "radial-gradient(circle at top, rgba(88,101,242,0.18), transparent 30%), linear-gradient(180deg, #0a0a12 0%, #11111b 100%)",
         color: "white",
@@ -144,146 +105,684 @@ export default function DealsPage() {
     >
       <section
         style={{
-          maxWidth: 1200,
-          margin: "0 auto 24px",
-          padding: 24,
-          borderRadius: 22,
-          border: "1px solid rgba(255,255,255,0.08)",
-          background:
-            "linear-gradient(135deg, rgba(88,101,242,0.16), rgba(124,58,237,0.10))",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+          padding: "70px 40px 30px",
         }}
       >
         <div
           style={{
-            display: "inline-block",
-            padding: "6px 12px",
-            borderRadius: 999,
-            background: "rgba(34,197,94,0.14)",
-            color: "#86efac",
-            fontWeight: 700,
-            marginBottom: 12,
-            fontSize: 13,
+            maxWidth: 1100,
+            margin: "0 auto",
+            padding: 32,
+            borderRadius: 24,
+            border: "1px solid rgba(255,255,255,0.08)",
+            background:
+              "linear-gradient(135deg, rgba(88,101,242,0.16), rgba(124,58,237,0.10))",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
           }}
         >
-          DEALS HUB
+          <div
+            style={{
+              display: "inline-block",
+              padding: "6px 12px",
+              borderRadius: 999,
+              background: "rgba(88,101,242,0.18)",
+              color: "#c7d2fe",
+              fontWeight: 700,
+              marginBottom: 12,
+              fontSize: 13,
+            }}
+          >
+            GAMING HUB
+          </div>
+
+          <h1
+            style={{
+              fontSize: 52,
+              margin: 0,
+              marginBottom: 12,
+              lineHeight: 1.1,
+            }}
+          >
+            🎮 Gaming Hub
+          </h1>
+
+          <p
+            style={{
+              fontSize: 18,
+              color: "#c7c9e0",
+              maxWidth: 760,
+              lineHeight: 1.6,
+              marginBottom: 24,
+            }}
+          >
+            Il punto d’incontro della tua community gaming: eventi, squadre,
+            offerte PC e collegamento diretto al server Discord.
+          </p>
+
+          <div
+            style={{
+              display: "flex",
+              gap: 14,
+              flexWrap: "wrap",
+            }}
+          >
+            <a
+              href="https://discord.gg/4NrqDfgP"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-block",
+                padding: "14px 22px",
+                borderRadius: 14,
+                textDecoration: "none",
+                background: "linear-gradient(90deg, #5865f2, #7c3aed)",
+                color: "white",
+                fontWeight: 800,
+                boxShadow: "0 12px 30px rgba(88,101,242,0.35)",
+              }}
+            >
+              Unisciti alla Community
+            </a>
+
+            <a
+              href="/events"
+              style={{
+                display: "inline-block",
+                padding: "14px 22px",
+                borderRadius: 14,
+                textDecoration: "none",
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.10)",
+                color: "white",
+                fontWeight: 800,
+              }}
+            >
+              Scopri gli Eventi
+            </a>
+
+            <a
+              href="/deals"
+              style={{
+                display: "inline-block",
+                padding: "14px 22px",
+                borderRadius: 14,
+                textDecoration: "none",
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.10)",
+                color: "white",
+                fontWeight: 800,
+              }}
+            >
+              Vedi i Deals
+            </a>
+          </div>
         </div>
-
-        <h1 style={{ margin: 0, fontSize: 42 }}>🔥 Deals Gaming</h1>
-
-        <p style={{ color: "#c7c9e0", marginTop: 10, marginBottom: 0 }}>
-          Cerca offerte, filtra per piattaforma e controlla giochi gratis e sconti.
-        </p>
       </section>
 
       <section
         style={{
-          maxWidth: 1200,
-          margin: "0 auto 24px",
-          display: "grid",
-          gridTemplateColumns: "minmax(220px, 1fr) minmax(180px, 220px)",
-          gap: 16,
+          padding: "10px 40px 20px",
         }}
       >
-        <input
-          type="text"
-          placeholder="Cerca un gioco..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+        <div
           style={{
-            width: "100%",
-            padding: "14px 16px",
-            borderRadius: 14,
-            border: "1px solid rgba(255,255,255,0.10)",
-            background: "rgba(255,255,255,0.04)",
-            color: "white",
-            outline: "none",
-            fontSize: 15,
-          }}
-        />
-
-        <select
-          value={platform}
-          onChange={(e) => setPlatform(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "14px 16px",
-            borderRadius: 14,
-            border: "1px solid rgba(255,255,255,0.10)",
-            background: "#1a1a28",
-            color: "white",
-            outline: "none",
-            fontSize: 15,
+            maxWidth: 1100,
+            margin: "0 auto",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            gap: 20,
           }}
         >
-          <option value="Tutte">Tutte le piattaforme</option>
-          <option value="Epic">Epic</option>
-          <option value="Steam">Steam</option>
-        </select>
+          <a
+            href="/events"
+            style={{
+              textDecoration: "none",
+              color: "white",
+              padding: 22,
+              borderRadius: 20,
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              boxShadow: "0 12px 30px rgba(0,0,0,0.22)",
+            }}
+          >
+            <div style={{ fontSize: 34, marginBottom: 12 }}>📅</div>
+            <h2 style={{ marginTop: 0, marginBottom: 8 }}>Eventi</h2>
+            <p style={{ color: "#b8b8d0", margin: 0, lineHeight: 1.6 }}>
+              Partecipa agli eventi della community e unisciti alle squadre.
+            </p>
+          </a>
+
+          <a
+            href="/deals"
+            style={{
+              textDecoration: "none",
+              color: "white",
+              padding: 22,
+              borderRadius: 20,
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              boxShadow: "0 12px 30px rgba(0,0,0,0.22)",
+            }}
+          >
+            <div style={{ fontSize: 34, marginBottom: 12 }}>🔥</div>
+            <h2 style={{ marginTop: 0, marginBottom: 8 }}>Deals</h2>
+            <p style={{ color: "#b8b8d0", margin: 0, lineHeight: 1.6 }}>
+              Scopri giochi gratis e offerte aggiornate direttamente dal sito.
+            </p>
+          </a>
+
+          <a
+            href="https://discord.gg/4NrqDfgP"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              textDecoration: "none",
+              color: "white",
+              padding: 22,
+              borderRadius: 20,
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              boxShadow: "0 12px 30px rgba(0,0,0,0.22)",
+            }}
+          >
+            <div style={{ fontSize: 34, marginBottom: 12 }}>💬</div>
+            <h2 style={{ marginTop: 0, marginBottom: 8 }}>Discord Community</h2>
+            <p style={{ color: "#b8b8d0", margin: 0, lineHeight: 1.6 }}>
+              Entra nel server, resta aggiornato e gioca insieme alla community.
+            </p>
+          </a>
+        </div>
       </section>
 
-      <section style={{ maxWidth: 1200, margin: "0 auto" }}>
-        {loading ? (
+      <section
+        style={{
+          padding: "10px 40px 20px",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1100,
+            margin: "0 auto",
+            padding: 24,
+            borderRadius: 22,
+            border: "1px solid rgba(255,255,255,0.08)",
+            background:
+              "linear-gradient(180deg, rgba(23,23,38,0.98), rgba(14,14,24,0.98))",
+            boxShadow: "0 16px 50px rgba(0,0,0,0.35)",
+          }}
+        >
           <div
             style={{
-              padding: 30,
-              borderRadius: 18,
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.06)",
-              textAlign: "center",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+              marginBottom: 18,
             }}
           >
-            Caricamento deals...
-          </div>
-        ) : filteredDeals.length === 0 ? (
-          <div
-            style={{
-              padding: 30,
-              borderRadius: 18,
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.06)",
-              textAlign: "center",
-              color: "#b8b8d0",
-            }}
-          >
-            Nessun deal trovato con i filtri attuali.
-          </div>
-        ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))",
-              gap: 20,
-            }}
-          >
-            {filteredDeals.map((deal) => {
-              const countdown =
-                countdowns[deal.id] || getCountdownLabel(deal.end_date);
+            <div>
+              <div
+                style={{
+                  display: "inline-block",
+                  padding: "6px 12px",
+                  borderRadius: 999,
+                  background: "rgba(250,204,21,0.14)",
+                  color: "#fde68a",
+                  fontWeight: 700,
+                  marginBottom: 10,
+                  fontSize: 13,
+                }}
+              >
+                NEXT EVENT
+              </div>
 
-              const expired = countdown === "Offerta terminata";
-              const isEpic = deal.platform === "Epic";
-              const isSteam = deal.platform === "Steam";
+              <h2 style={{ margin: 0, fontSize: 30 }}>📅 Prossimo evento</h2>
 
-              return (
-                <div
-                  key={deal.id}
+              <p style={{ color: "#b8b8d0", marginTop: 10, marginBottom: 0 }}>
+                La prossima attività in programma della community.
+              </p>
+            </div>
+
+            <a
+              href="/events"
+              style={{
+                textDecoration: "none",
+                color: "white",
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.10)",
+                padding: "12px 16px",
+                borderRadius: 12,
+                fontWeight: 800,
+              }}
+            >
+              Vai agli eventi
+            </a>
+          </div>
+
+          {loadingEvent ? (
+            <div
+              style={{
+                padding: 24,
+                borderRadius: 16,
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                textAlign: "center",
+                color: "#b8b8d0",
+              }}
+            >
+              Caricamento prossimo evento...
+            </div>
+          ) : !nextEvent ? (
+            <div
+              style={{
+                padding: 24,
+                borderRadius: 16,
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                textAlign: "center",
+                color: "#b8b8d0",
+              }}
+            >
+              Nessun evento programmato al momento.
+            </div>
+          ) : (
+            <div
+              style={{
+                padding: 22,
+                borderRadius: 18,
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                boxShadow: "0 12px 30px rgba(0,0,0,0.22)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  flexWrap: "wrap",
+                  marginBottom: 14,
+                }}
+              >
+                <span
                   style={{
-                    borderRadius: 20,
-                    overflow: "hidden",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    background: "rgba(255,255,255,0.03)",
-                    boxShadow: "0 12px 30px rgba(0,0,0,0.22)",
+                    display: "inline-block",
+                    padding: "6px 10px",
+                    borderRadius: 999,
+                    background: nextEvent.registrations_open
+                      ? "rgba(34,197,94,0.14)"
+                      : "rgba(239,68,68,0.14)",
+                    color: nextEvent.registrations_open ? "#86efac" : "#fca5a5",
+                    fontWeight: 800,
+                    fontSize: 12,
                   }}
                 >
-                  <div
+                  {nextEvent.registrations_open
+                    ? "Iscrizioni aperte"
+                    : "Iscrizioni chiuse"}
+                </span>
+
+                <span
+                  style={{
+                    display: "inline-block",
+                    padding: "6px 10px",
+                    borderRadius: 999,
+                    background: "rgba(255,255,255,0.07)",
+                    color: "white",
+                    fontWeight: 800,
+                    fontSize: 12,
+                  }}
+                >
+                  {formattedEventDate}
+                </span>
+              </div>
+
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: 24,
+                  marginBottom: 10,
+                }}
+              >
+                {nextEvent.title}
+              </h3>
+
+              <p
+                style={{
+                  color: "#b8b8d0",
+                  lineHeight: 1.7,
+                  marginTop: 0,
+                  marginBottom: 18,
+                  maxWidth: 760,
+                }}
+              >
+                {nextEvent.description || "Dettagli evento disponibili nella sezione eventi."}
+              </p>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  flexWrap: "wrap",
+                }}
+              >
+                <a
+                  href="/events"
+                  style={{
+                    display: "inline-block",
+                    padding: "12px 18px",
+                    borderRadius: 12,
+                    textDecoration: "none",
+                    background: "linear-gradient(90deg, #5865f2, #7c3aed)",
+                    color: "white",
+                    fontWeight: 800,
+                    boxShadow: "0 12px 30px rgba(88,101,242,0.35)",
+                  }}
+                >
+                  Apri eventi
+                </a>
+
+                <a
+                  href="/events"
+                  style={{
+                    display: "inline-block",
+                    padding: "12px 18px",
+                    borderRadius: 12,
+                    textDecoration: "none",
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    color: "white",
+                    fontWeight: 800,
+                  }}
+                >
+                  {nextEvent.registrations_open ? "Partecipa ora" : "Vedi dettagli"}
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section
+        style={{
+          padding: "10px 40px 20px",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1100,
+            margin: "0 auto",
+            padding: 24,
+            borderRadius: 22,
+            border: "1px solid rgba(255,255,255,0.08)",
+            background:
+              "linear-gradient(180deg, rgba(23,23,38,0.98), rgba(14,14,24,0.98))",
+            boxShadow: "0 16px 50px rgba(0,0,0,0.35)",
+            display: "grid",
+            gridTemplateColumns: "1.3fr 0.9fr",
+            gap: 20,
+          }}
+        >
+          <div>
+            <div
+              style={{
+                display: "inline-block",
+                padding: "6px 12px",
+                borderRadius: 999,
+                background: "rgba(88,101,242,0.18)",
+                color: "#c7d2fe",
+                fontWeight: 700,
+                marginBottom: 10,
+                fontSize: 13,
+              }}
+            >
+              DISCORD HUB
+            </div>
+
+            <h2 style={{ margin: 0, fontSize: 30, marginBottom: 12 }}>
+              💬 La community vive su Discord
+            </h2>
+
+            <p
+              style={{
+                color: "#b8b8d0",
+                lineHeight: 1.7,
+                marginTop: 0,
+                marginBottom: 18,
+                maxWidth: 650,
+              }}
+            >
+              Il sito e il server lavorano insieme: eventi, notifiche, squadre,
+              aggiornamenti e community gaming tutto nello stesso ecosistema.
+            </p>
+
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <a
+                href="https://discord.gg/4NrqDfgP"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-block",
+                  padding: "14px 20px",
+                  borderRadius: 14,
+                  textDecoration: "none",
+                  background: "linear-gradient(90deg, #5865f2, #7c3aed)",
+                  color: "white",
+                  fontWeight: 800,
+                  boxShadow: "0 12px 30px rgba(88,101,242,0.35)",
+                }}
+              >
+                Entra su Discord
+              </a>
+
+              <a
+                href="/events"
+                style={{
+                  display: "inline-block",
+                  padding: "14px 20px",
+                  borderRadius: 14,
+                  textDecoration: "none",
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  color: "white",
+                  fontWeight: 800,
+                }}
+              >
+                Vai agli Eventi
+              </a>
+            </div>
+          </div>
+
+          <div
+            style={{
+              borderRadius: 18,
+              padding: 20,
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              display: "grid",
+              gap: 14,
+              alignContent: "start",
+            }}
+          >
+            <div
+              style={{
+                padding: "12px 14px",
+                borderRadius: 14,
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 4 }}>📣 Annunci evento</div>
+              <div style={{ color: "#b8b8d0", lineHeight: 1.6 }}>
+                Apertura iscrizioni e aggiornamenti arrivano anche su Discord.
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: "12px 14px",
+                borderRadius: 14,
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 4 }}>⚔️ Squadre e tornei</div>
+              <div style={{ color: "#b8b8d0", lineHeight: 1.6 }}>
+                Organizza partite e community nights in modo semplice e veloce.
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: "12px 14px",
+                borderRadius: 14,
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              <div style={{ fontWeight: 800, marginBottom: 4 }}>🎁 Deals e giochi gratis</div>
+              <div style={{ color: "#b8b8d0", lineHeight: 1.6 }}>
+                Epic e Steam in un unico hub sempre aggiornato.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        style={{
+          padding: "20px 40px 60px",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1100,
+            margin: "0 auto",
+            padding: 24,
+            borderRadius: 22,
+            border: "1px solid rgba(255,255,255,0.08)",
+            background:
+              "linear-gradient(180deg, rgba(23,23,38,0.98), rgba(14,14,24,0.98))",
+            boxShadow: "0 16px 50px rgba(0,0,0,0.35)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+              marginBottom: 18,
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  display: "inline-block",
+                  padding: "6px 12px",
+                  borderRadius: 999,
+                  background: "rgba(34,197,94,0.14)",
+                  color: "#86efac",
+                  fontWeight: 700,
+                  marginBottom: 10,
+                  fontSize: 13,
+                }}
+              >
+                DEALS PREVIEW
+              </div>
+
+              <h2 style={{ margin: 0, fontSize: 30 }}>🔥 Epic + Steam in evidenza</h2>
+
+              <p style={{ color: "#b8b8d0", marginTop: 10, marginBottom: 0 }}>
+                Una preview rapida dei giochi gratis e delle migliori offerte.
+              </p>
+            </div>
+
+            <a
+              href="/deals"
+              style={{
+                textDecoration: "none",
+                color: "white",
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.10)",
+                padding: "12px 16px",
+                borderRadius: 12,
+                fontWeight: 800,
+              }}
+            >
+              Vedi tutto
+            </a>
+          </div>
+
+          {loadingDeals ? (
+            <div
+              style={{
+                padding: 24,
+                borderRadius: 16,
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                textAlign: "center",
+                color: "#b8b8d0",
+              }}
+            >
+              Caricamento deals...
+            </div>
+          ) : featuredDeals.length === 0 ? (
+            <div
+              style={{
+                padding: 24,
+                borderRadius: 16,
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                textAlign: "center",
+                color: "#b8b8d0",
+              }}
+            >
+              Nessun deal disponibile al momento.
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))",
+                gap: 18,
+              }}
+            >
+              {featuredDeals.map((deal, index) => {
+                const isEpic = deal.platform === "Epic" || deal.store === "Epic Games";
+                const isSteam = deal.platform === "Steam" || deal.store === "Steam";
+
+                return (
+                  <a
+                    key={deal.id || index}
+                    href={deal.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     style={{
-                      width: "100%",
-                      height: 180,
-                      background: "#111827",
+                      textDecoration: "none",
+                      color: "white",
+                      borderRadius: 18,
                       overflow: "hidden",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "rgba(255,255,255,0.03)",
+                      display: "block",
                     }}
                   >
-                    {deal.image ? (
+                    <div
+                      style={{
+                        width: "100%",
+                        height: 160,
+                        background: "#111827",
+                        overflow: "hidden",
+                      }}
+                    >
                       <img
                         src={deal.image}
                         alt={deal.title}
@@ -294,152 +793,82 @@ export default function DealsPage() {
                           display: "block",
                         }}
                       />
-                    ) : (
+                    </div>
+
+                    <div style={{ padding: 16 }}>
                       <div
                         style={{
-                          width: "100%",
-                          height: "100%",
                           display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "#9ca3af",
-                          fontWeight: 700,
+                          gap: 8,
+                          flexWrap: "wrap",
+                          marginBottom: 10,
                         }}
                       >
-                        Nessuna immagine
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ padding: 16 }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 8,
-                        flexWrap: "wrap",
-                        marginBottom: 12,
-                      }}
-                    >
-                      <span
-                        style={{
-                          display: "inline-block",
-                          padding: "5px 10px",
-                          borderRadius: 999,
-                          background: "rgba(88,101,242,0.14)",
-                          color: "#c7d2fe",
-                          fontSize: 12,
-                          fontWeight: 700,
-                        }}
-                      >
-                        {deal.store}
-                      </span>
-
-                      <span
-                        style={{
-                          display: "inline-block",
-                          padding: "5px 10px",
-                          borderRadius: 999,
-                          background: "rgba(34,197,94,0.14)",
-                          color: "#86efac",
-                          fontSize: 12,
-                          fontWeight: 700,
-                        }}
-                      >
-                        {deal.price}
-                      </span>
-
-                      {isSteam && !!deal.discount_percent && (
                         <span
                           style={{
                             display: "inline-block",
                             padding: "5px 10px",
                             borderRadius: 999,
-                            background: "rgba(239,68,68,0.14)",
-                            color: "#fca5a5",
+                            background: isEpic
+                              ? "rgba(34,197,94,0.14)"
+                              : "rgba(88,101,242,0.14)",
+                            color: isEpic ? "#86efac" : "#c7d2fe",
+                            fontWeight: 800,
                             fontSize: 12,
-                            fontWeight: 700,
                           }}
                         >
-                          -{deal.discount_percent}%
+                          {deal.store || (isEpic ? "Epic Games" : isSteam ? "Steam" : "Deal")}
                         </span>
-                      )}
+
+                        {deal.price && (
+                          <span
+                            style={{
+                              display: "inline-block",
+                              padding: "5px 10px",
+                              borderRadius: 999,
+                              background: "rgba(255,255,255,0.07)",
+                              color: "white",
+                              fontWeight: 800,
+                              fontSize: 12,
+                            }}
+                          >
+                            {deal.price}
+                          </span>
+                        )}
+
+                        {!!deal.discount_percent && (
+                          <span
+                            style={{
+                              display: "inline-block",
+                              padding: "5px 10px",
+                              borderRadius: 999,
+                              background: "rgba(239,68,68,0.14)",
+                              color: "#fca5a5",
+                              fontWeight: 800,
+                              fontSize: 12,
+                            }}
+                          >
+                            -{deal.discount_percent}%
+                          </span>
+                        )}
+                      </div>
+
+                      <h3
+                        style={{
+                          margin: 0,
+                          fontSize: 18,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {deal.title}
+                      </h3>
                     </div>
-
-                    <h3
-                      style={{
-                        margin: 0,
-                        marginBottom: 12,
-                        fontSize: 20,
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      {deal.title}
-                    </h3>
-
-                    <div
-                      style={{
-                        display: "grid",
-                        gap: 8,
-                        color: "#d4d4f7",
-                        marginBottom: 16,
-                      }}
-                    >
-                      {isEpic ? (
-                        <>
-                          <div>
-                            ⏳ <strong>Countdown:</strong>{" "}
-                            <span style={{ color: expired ? "#fca5a5" : "#86efac" }}>
-                              {countdown}
-                            </span>
-                          </div>
-
-                          <div>
-                            📅 <strong>Scade:</strong> {formatDate(deal.end_date)}
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div>
-                            💸 <strong>Prezzo:</strong> {deal.price}
-                          </div>
-
-                          <div>
-                            🏷️ <strong>Prezzo originale:</strong>{" "}
-                            {deal.original_price || "Non disponibile"}
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    <a
-                      href={deal.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        display: "inline-block",
-                        width: "100%",
-                        textAlign: "center",
-                        padding: "12px 14px",
-                        borderRadius: 12,
-                        textDecoration: "none",
-                        background:
-                          isEpic && expired
-                            ? "#3f3f46"
-                            : "linear-gradient(90deg, #5865f2, #7c3aed)",
-                        color: "white",
-                        fontWeight: 800,
-                        pointerEvents: isEpic && expired ? "none" : "auto",
-                        opacity: isEpic && expired ? 0.7 : 1,
-                      }}
-                    >
-                      {isEpic && expired ? "Offerta scaduta" : "Apri deal"}
-                    </a>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                  </a>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </section>
     </main>
   );
