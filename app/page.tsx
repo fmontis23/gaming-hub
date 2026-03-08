@@ -13,9 +13,20 @@ type Deal = {
   discount_percent?: number;
 };
 
+type NextEvent = {
+  id: string;
+  title: string;
+  description?: string;
+  event_date: string;
+  registrations_open?: boolean;
+};
+
 export default function Home() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loadingDeals, setLoadingDeals] = useState(true);
+
+  const [nextEvent, setNextEvent] = useState<NextEvent | null>(null);
+  const [loadingEvent, setLoadingEvent] = useState(true);
 
   useEffect(() => {
     const loadDeals = async () => {
@@ -43,12 +54,45 @@ export default function Home() {
       }
     };
 
-    loadDeals();
+    const loadNextEvent = async () => {
+      try {
+        setLoadingEvent(true);
+
+        const res = await fetch("/api/events/next");
+        const data = await res.json().catch(() => ({ event: null }));
+
+        if (!res.ok) {
+          throw new Error(data?.error || "Errore nel caricamento del prossimo evento");
+        }
+
+        setNextEvent(data.event || null);
+      } catch (error) {
+        console.error("Errore home next event:", error);
+        setNextEvent(null);
+      } finally {
+        setLoadingEvent(false);
+      }
+    };
+
+    const loadData = async () => {
+      await Promise.all([loadDeals(), loadNextEvent()]);
+    };
+
+    loadData();
   }, []);
 
   const featuredDeals = useMemo(() => {
     return deals.slice(0, 6);
   }, [deals]);
+
+  const formattedEventDate = useMemo(() => {
+    if (!nextEvent?.event_date) return "";
+
+    return new Date(nextEvent.event_date).toLocaleString("it-IT", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  }, [nextEvent]);
 
   return (
     <main
@@ -247,6 +291,215 @@ export default function Home() {
               Entra nel server, resta aggiornato e gioca insieme alla community.
             </p>
           </a>
+        </div>
+      </section>
+
+      <section
+        style={{
+          padding: "10px 40px 20px",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1100,
+            margin: "0 auto",
+            padding: 24,
+            borderRadius: 22,
+            border: "1px solid rgba(255,255,255,0.08)",
+            background:
+              "linear-gradient(180deg, rgba(23,23,38,0.98), rgba(14,14,24,0.98))",
+            boxShadow: "0 16px 50px rgba(0,0,0,0.35)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+              marginBottom: 18,
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  display: "inline-block",
+                  padding: "6px 12px",
+                  borderRadius: 999,
+                  background: "rgba(250,204,21,0.14)",
+                  color: "#fde68a",
+                  fontWeight: 700,
+                  marginBottom: 10,
+                  fontSize: 13,
+                }}
+              >
+                NEXT EVENT
+              </div>
+
+              <h2 style={{ margin: 0, fontSize: 30 }}>📅 Prossimo evento</h2>
+
+              <p style={{ color: "#b8b8d0", marginTop: 10, marginBottom: 0 }}>
+                La prossima attività in programma della community.
+              </p>
+            </div>
+
+            <a
+              href="/events"
+              style={{
+                textDecoration: "none",
+                color: "white",
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.10)",
+                padding: "12px 16px",
+                borderRadius: 12,
+                fontWeight: 800,
+              }}
+            >
+              Vai agli eventi
+            </a>
+          </div>
+
+          {loadingEvent ? (
+            <div
+              style={{
+                padding: 24,
+                borderRadius: 16,
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                textAlign: "center",
+                color: "#b8b8d0",
+              }}
+            >
+              Caricamento prossimo evento...
+            </div>
+          ) : !nextEvent ? (
+            <div
+              style={{
+                padding: 24,
+                borderRadius: 16,
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                textAlign: "center",
+                color: "#b8b8d0",
+              }}
+            >
+              Nessun evento programmato al momento.
+            </div>
+          ) : (
+            <div
+              style={{
+                padding: 22,
+                borderRadius: 18,
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                boxShadow: "0 12px 30px rgba(0,0,0,0.22)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  flexWrap: "wrap",
+                  marginBottom: 14,
+                }}
+              >
+                <span
+                  style={{
+                    display: "inline-block",
+                    padding: "6px 10px",
+                    borderRadius: 999,
+                    background: nextEvent.registrations_open
+                      ? "rgba(34,197,94,0.14)"
+                      : "rgba(239,68,68,0.14)",
+                    color: nextEvent.registrations_open ? "#86efac" : "#fca5a5",
+                    fontWeight: 800,
+                    fontSize: 12,
+                  }}
+                >
+                  {nextEvent.registrations_open
+                    ? "Iscrizioni aperte"
+                    : "Iscrizioni chiuse"}
+                </span>
+
+                <span
+                  style={{
+                    display: "inline-block",
+                    padding: "6px 10px",
+                    borderRadius: 999,
+                    background: "rgba(255,255,255,0.07)",
+                    color: "white",
+                    fontWeight: 800,
+                    fontSize: 12,
+                  }}
+                >
+                  {formattedEventDate}
+                </span>
+              </div>
+
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: 24,
+                  marginBottom: 10,
+                }}
+              >
+                {nextEvent.title}
+              </h3>
+
+              <p
+                style={{
+                  color: "#b8b8d0",
+                  lineHeight: 1.7,
+                  marginTop: 0,
+                  marginBottom: 18,
+                  maxWidth: 760,
+                }}
+              >
+                {nextEvent.description || "Dettagli evento disponibili nella sezione eventi."}
+              </p>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  flexWrap: "wrap",
+                }}
+              >
+                <a
+                  href="/events"
+                  style={{
+                    display: "inline-block",
+                    padding: "12px 18px",
+                    borderRadius: 12,
+                    textDecoration: "none",
+                    background: "linear-gradient(90deg, #5865f2, #7c3aed)",
+                    color: "white",
+                    fontWeight: 800,
+                    boxShadow: "0 12px 30px rgba(88,101,242,0.35)",
+                  }}
+                >
+                  Apri eventi
+                </a>
+
+                <a
+                  href="/events"
+                  style={{
+                    display: "inline-block",
+                    padding: "12px 18px",
+                    borderRadius: 12,
+                    textDecoration: "none",
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    color: "white",
+                    fontWeight: 800,
+                  }}
+                >
+                  {nextEvent.registrations_open ? "Partecipa ora" : "Vedi dettagli"}
+                </a>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
