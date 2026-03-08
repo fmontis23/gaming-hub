@@ -1,12 +1,19 @@
+"use client";
+
+import "./globals.css";
+import Navbar from "./components/Navbar";
+import { useEffect } from "react";
+import { supabase } from "../lib/supabaseClient";
 
 export const metadata = {
-  title: "GameHub Italia",
+  title: "Gaming Hub",
   description: "Community gaming con eventi, squadre e offerte sui giochi.",
   openGraph: {
-    title: "GameHub Italia",
-    description: "Partecipa agli eventi della community, trova giochi gratis e gioca con altri gamer.",
+    title: "Gaming Hub",
+    description:
+      "Partecipa agli eventi della community, trova giochi gratis e gioca con altri gamer.",
     url: "https://gamehubitalia.it",
-    siteName: "GameHub Italia",
+    siteName: "Gaming Hub",
     images: [
       {
         url: "/og-image.png",
@@ -17,12 +24,7 @@ export const metadata = {
     locale: "it_IT",
     type: "website",
   },
-};"use client";
-
-import "./globals.css";
-import Navbar from "./components/Navbar";
-import { useEffect } from "react";
-import { supabase } from "../lib/supabaseClient";
+};
 
 export default function RootLayout({
   children,
