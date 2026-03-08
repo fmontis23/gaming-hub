@@ -98,21 +98,39 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main style={{ padding: 40 }}>
+      <main style={{ padding: 40, color: "white" }}>
         <p>Caricamento profilo...</p>
       </main>
     );
   }
 
-  if (!isLoggedIn) {
-    return (
-      <main style={{ padding: 40, maxWidth: 500 }}>
+  return (
+    <main
+      style={{
+        minHeight: "100vh",
+        padding: 40,
+        background:
+          "radial-gradient(circle at top, rgba(88,101,242,0.18), transparent 30%), linear-gradient(180deg, #0a0a12 0%, #11111b 100%)",
+        color: "white",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 500,
+          margin: "0 auto",
+          padding: 30,
+          borderRadius: 20,
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          boxShadow: "0 16px 50px rgba(0,0,0,0.35)",
+        }}
+      >
         <button
           onClick={() => router.back()}
           style={{
             padding: "8px 14px",
             borderRadius: 8,
-            border: "1px solid #444",
+            border: "1px solid rgba(255,255,255,0.1)",
             background: "rgba(255,255,255,0.05)",
             color: "white",
             cursor: "pointer",
@@ -122,103 +140,107 @@ export default function ProfilePage() {
           ← Indietro
         </button>
 
-        <h1>Profilo</h1>
+        <h1 style={{ marginTop: 0 }}>👤 Profilo giocatore</h1>
 
-        <p style={{ marginTop: 12, color: "#b8b8d0" }}>
-          Devi prima fare login con Discord per vedere e modificare il profilo.
-        </p>
+        {!isLoggedIn ? (
+          <>
+            <p style={{ marginTop: 12, color: "#b8b8d0" }}>
+              Devi prima fare login con Discord per vedere e modificare il
+              profilo.
+            </p>
 
-        <button
-          onClick={loginWithDiscord}
-          style={{
-            marginTop: 20,
-            padding: "12px 16px",
-            borderRadius: 10,
-            border: "none",
-            background: "#5865f2",
-            color: "white",
-            fontWeight: "700",
-            cursor: "pointer",
-          }}
-        >
-          Login con Discord
-        </button>
-      </main>
-    );
-  }
+            <button
+              onClick={loginWithDiscord}
+              style={{
+                marginTop: 20,
+                padding: "12px 16px",
+                borderRadius: 10,
+                border: "none",
+                background: "#5865f2",
+                color: "white",
+                fontWeight: "700",
+                cursor: "pointer",
+              }}
+            >
+              Login con Discord
+            </button>
+          </>
+        ) : (
+          <>
+            <label style={{ display: "block", marginTop: 20 }}>
+              Nome Discord
+            </label>
 
-  return (
-    <main style={{ padding: 40, maxWidth: 500 }}>
-      <button
-        onClick={() => router.back()}
-        style={{
-          padding: "8px 14px",
-          borderRadius: 8,
-          border: "1px solid #444",
-          background: "rgba(255,255,255,0.05)",
-          color: "white",
-          cursor: "pointer",
-          marginBottom: 16,
-        }}
-      >
-        ← Indietro
-      </button>
+            <input
+              value={discordName}
+              disabled
+              style={{
+                width: "100%",
+                padding: 10,
+                borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.1)",
+                background: "#1a1a28",
+                color: "white",
+              }}
+            />
 
-      <h1>Profilo</h1>
+            <label style={{ display: "block", marginTop: 20 }}>
+              Nome Ubisoft
+            </label>
 
-      <label style={{ display: "block", marginTop: 20 }}>Nome Discord</label>
+            <input
+              value={ubisoftName}
+              onChange={(e) => setUbisoftName(e.target.value)}
+              placeholder="Es: MontisR6"
+              style={{
+                width: "100%",
+                padding: 10,
+                borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.1)",
+                background: "#1a1a28",
+                color: "white",
+              }}
+            />
 
-      <input
-        value={discordName}
-        disabled
-        style={{
-          width: "100%",
-          padding: 10,
-          borderRadius: 10,
-          border: "1px solid #444",
-        }}
-      />
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                marginTop: 20,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                onClick={saveProfile}
+                style={{
+                  padding: "12px 16px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: "linear-gradient(90deg,#5865f2,#7c3aed)",
+                  color: "white",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                }}
+              >
+                Salva profilo
+              </button>
 
-      <label style={{ display: "block", marginTop: 20 }}>Nome Ubisoft</label>
-
-      <input
-        value={ubisoftName}
-        onChange={(e) => setUbisoftName(e.target.value)}
-        placeholder="Es: MontisR6"
-        style={{
-          width: "100%",
-          padding: 10,
-          borderRadius: 10,
-          border: "1px solid #444",
-        }}
-      />
-
-      <div style={{ display: "flex", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
-        <button
-          onClick={saveProfile}
-          style={{
-            padding: "12px 16px",
-            borderRadius: 10,
-            border: "1px solid #444",
-            cursor: "pointer",
-          }}
-        >
-          Salva profilo
-        </button>
-
-        <button
-          onClick={logout}
-          style={{
-            padding: "12px 16px",
-            borderRadius: 10,
-            border: "1px solid #444",
-            background: "#2b2b35",
-            color: "white",
-            cursor: "pointer",
-          }}
-        >
-          Logout
-        </button>
+              <button
+                onClick={logout}
+                style={{
+                  padding: "12px 16px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: "#2b2b35",
+                  color: "white",
+                  cursor: "pointer",
+                }}
+              >
+                Logout
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </main>
   );
