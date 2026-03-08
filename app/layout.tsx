@@ -1,4 +1,23 @@
-"use client";
+
+export const metadata = {
+  title: "GameHub Italia",
+  description: "Community gaming con eventi, squadre e offerte sui giochi.",
+  openGraph: {
+    title: "GameHub Italia",
+    description: "Partecipa agli eventi della community, trova giochi gratis e gioca con altri gamer.",
+    url: "https://gamehubitalia.it",
+    siteName: "GameHub Italia",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+      },
+    ],
+    locale: "it_IT",
+    type: "website",
+  },
+};"use client";
 
 import "./globals.css";
 import Navbar from "./components/Navbar";
