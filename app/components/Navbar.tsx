@@ -7,6 +7,7 @@ export default function Navbar() {
     <header className="site-header">
       <div className="site-header-inner">
 
+        {/* BRAND */}
         <div className="site-brand">
           <Link href="/" className="brand-link">
             <span className="brand-icon">🎮</span>
@@ -14,13 +15,15 @@ export default function Navbar() {
           </Link>
         </div>
 
+        {/* NAVIGATION */}
         <nav className="site-nav">
           <Link href="/">Home</Link>
-          <Link href="/deals">Offerte</Link>
           <Link href="/events">Eventi</Link>
-          <Link href="/admin">Tornei</Link>
+          <Link href="/deals">Deals</Link>
+          <Link href="/community">Community</Link>
         </nav>
 
+        {/* ACTIONS */}
         <div className="site-actions">
 
           <a
@@ -29,7 +32,7 @@ export default function Navbar() {
             rel="noopener noreferrer"
             className="discord-button"
           >
-            Unisciti al Discord
+            Discord
           </a>
 
           <Link href="/profile" className="profile-button">
