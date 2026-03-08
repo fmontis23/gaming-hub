@@ -6,34 +6,68 @@ import { supabase } from "../../lib/supabaseClient";
 
 export default function Navbar() {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loadingAdmin, setLoadingAdmin] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     const checkAdmin = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        setLoadingAdmin(true);
 
-      if (!user) {
-        setIsAdmin(false);
-        return;
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError || !user) {
+          if (mounted) {
+            setIsAdmin(false);
+            setLoadingAdmin(false);
+          }
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from("admins")
+          .select("id")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Errore controllo admin navbar:", error.message);
+          if (mounted) {
+            setIsAdmin(false);
+            setLoadingAdmin(false);
+          }
+          return;
+        }
+
+        if (mounted) {
+          setIsAdmin(!!data);
+          setLoadingAdmin(false);
+        }
+      } catch (error) {
+        console.error("Errore navbar admin:", error);
+        if (mounted) {
+          setIsAdmin(false);
+          setLoadingAdmin(false);
+        }
       }
-
-      const { data, error } = await supabase
-        .from("admins")
-        .select("id")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error("Errore controllo admin navbar:", error.message);
-        setIsAdmin(false);
-        return;
-      }
-
-      setIsAdmin(!!data);
     };
 
     checkAdmin();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      checkAdmin();
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
@@ -51,7 +85,7 @@ export default function Navbar() {
           <Link href="/events">Eventi</Link>
           <Link href="/deals">Deals</Link>
           <Link href="/community">Community</Link>
-          {isAdmin && <Link href="/admin">Moderatore</Link>}
+          {!loadingAdmin && isAdmin && <Link href="/admin">Moderatore</Link>}
         </nav>
 
         <div className="site-actions">
