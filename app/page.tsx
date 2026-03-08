@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type Deal = {
@@ -62,7 +63,9 @@ export default function Home() {
         const data = await res.json().catch(() => ({ event: null }));
 
         if (!res.ok) {
-          throw new Error(data?.error || "Errore nel caricamento del prossimo evento");
+          throw new Error(
+            data?.error || "Errore nel caricamento del prossimo evento"
+          );
         }
 
         setNextEvent(data.event || null);
@@ -184,7 +187,7 @@ export default function Home() {
               Unisciti alla Community
             </a>
 
-            <a
+            <Link
               href="/events"
               style={{
                 display: "inline-block",
@@ -198,9 +201,9 @@ export default function Home() {
               }}
             >
               Scopri gli Eventi
-            </a>
+            </Link>
 
-            <a
+            <Link
               href="/deals"
               style={{
                 display: "inline-block",
@@ -214,7 +217,7 @@ export default function Home() {
               }}
             >
               Vedi i Deals
-            </a>
+            </Link>
           </div>
         </div>
       </section>
@@ -233,7 +236,7 @@ export default function Home() {
             gap: 20,
           }}
         >
-          <a
+          <Link
             href="/events"
             style={{
               textDecoration: "none",
@@ -250,9 +253,9 @@ export default function Home() {
             <p style={{ color: "#b8b8d0", margin: 0, lineHeight: 1.6 }}>
               Partecipa agli eventi della community e unisciti alle squadre.
             </p>
-          </a>
+          </Link>
 
-          <a
+          <Link
             href="/deals"
             style={{
               textDecoration: "none",
@@ -269,7 +272,7 @@ export default function Home() {
             <p style={{ color: "#b8b8d0", margin: 0, lineHeight: 1.6 }}>
               Scopri giochi gratis e offerte aggiornate direttamente dal sito.
             </p>
-          </a>
+          </Link>
 
           <a
             href="https://discord.gg/4NrqDfgP"
@@ -344,7 +347,7 @@ export default function Home() {
               </p>
             </div>
 
-            <a
+            <Link
               href="/events"
               style={{
                 textDecoration: "none",
@@ -357,7 +360,7 @@ export default function Home() {
               }}
             >
               Vai agli eventi
-            </a>
+            </Link>
           </div>
 
           {loadingEvent ? (
@@ -456,7 +459,8 @@ export default function Home() {
                   maxWidth: 760,
                 }}
               >
-                {nextEvent.description || "Dettagli evento disponibili nella sezione eventi."}
+                {nextEvent.description ||
+                  "Dettagli evento disponibili nella sezione eventi."}
               </p>
 
               <div
@@ -466,7 +470,7 @@ export default function Home() {
                   flexWrap: "wrap",
                 }}
               >
-                <a
+                <Link
                   href="/events"
                   style={{
                     display: "inline-block",
@@ -480,9 +484,9 @@ export default function Home() {
                   }}
                 >
                   Apri eventi
-                </a>
+                </Link>
 
-                <a
+                <Link
                   href="/events"
                   style={{
                     display: "inline-block",
@@ -496,7 +500,7 @@ export default function Home() {
                   }}
                 >
                   {nextEvent.registrations_open ? "Partecipa ora" : "Vedi dettagli"}
-                </a>
+                </Link>
               </div>
             </div>
           )}
@@ -581,7 +585,7 @@ export default function Home() {
                 Entra su Discord
               </a>
 
-              <a
+              <Link
                 href="/events"
                 style={{
                   display: "inline-block",
@@ -595,7 +599,7 @@ export default function Home() {
                 }}
               >
                 Vai agli Eventi
-              </a>
+              </Link>
             </div>
           </div>
 
@@ -705,7 +709,7 @@ export default function Home() {
               </p>
             </div>
 
-            <a
+            <Link
               href="/deals"
               style={{
                 textDecoration: "none",
@@ -718,7 +722,7 @@ export default function Home() {
               }}
             >
               Vedi tutto
-            </a>
+            </Link>
           </div>
 
           {loadingDeals ? (
@@ -756,8 +760,10 @@ export default function Home() {
               }}
             >
               {featuredDeals.map((deal, index) => {
-                const isEpic = deal.platform === "Epic" || deal.store === "Epic Games";
-                const isSteam = deal.platform === "Steam" || deal.store === "Steam";
+                const isEpic =
+                  deal.platform === "Epic" || deal.store === "Epic Games";
+                const isSteam =
+                  deal.platform === "Steam" || deal.store === "Steam";
 
                 return (
                   <a
@@ -817,7 +823,8 @@ export default function Home() {
                             fontSize: 12,
                           }}
                         >
-                          {deal.store || (isEpic ? "Epic Games" : isSteam ? "Steam" : "Deal")}
+                          {deal.store ||
+                            (isEpic ? "Epic Games" : isSteam ? "Steam" : "Deal")}
                         </span>
 
                         {deal.price && (
